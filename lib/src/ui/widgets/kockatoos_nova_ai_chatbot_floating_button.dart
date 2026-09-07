@@ -1,27 +1,43 @@
 import 'package:flutter/material.dart';
 
 import '../../core/kockatoos_nova_ai_chatbot_client.dart';
+import '../controllers/nova_chat_controller.dart';
+import 'nova_chat_view.dart';
 
 class NovaFloatingButton extends StatelessWidget {
-  const NovaFloatingButton({super.key});
+  final NovaChatController? controller;
+
+  const NovaFloatingButton({
+    super.key,
+    this.controller,
+  });
 
   @override
   Widget build(BuildContext context) {
-    // Access guard check
-    final nova = Nova.instance;
+    final activeController = controller ?? NovaChatController(config: Nova.instance.config);
+    final theme = activeController.theme;
 
     return FloatingActionButton(
-      backgroundColor: Theme.of(context).primaryColor,
+      backgroundColor: theme.primary,
       onPressed: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Nova Chat Initialized with token: ${nova.config.apiKey}',
-            ),
-          ),
+        showModalBottomSheet(
+          context: context,
+          isScrollControlled: true,
+          useSafeArea: true,
+          backgroundColor: Colors.transparent,
+          builder: (context) {
+            return FractionallySizedBox(
+              heightFactor: 0.85,
+              child: NovaChatView(
+                controller: activeController,
+                isModal: true,
+                onClose: () => Navigator.of(context).pop(),
+              ),
+            );
+          },
         );
       },
-      child: const Icon(Icons.chat_bubble_outline),
+      child: const Icon(Icons.chat_bubble_outline, color: Colors.white),
     );
   }
 }
