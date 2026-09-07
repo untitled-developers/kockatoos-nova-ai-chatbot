@@ -1,39 +1,59 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# Kockatoos Nova AI Chatbot SDK (`kockatoos_nova_ai_chatbot`)
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
-
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
-
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+Official Flutter SDK for integrating the **Kockatoos Nova AI Chatbot** into Flutter mobile and web applications.
 
 ## Features
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+- ⚡ **Easy Initialization**: Configure with API key or dynamic token resolver.
+- 🎨 **Floating Chat Button**: Ready-to-use widget (`NovaFloatingButton`) for launching chat dialogs.
+- 🛡️ **Type-Safe Exceptions**: Explicit exception hierarchy (`NovaNotInitializedException`, `NovaAuthException`).
 
-## Getting started
+## Getting Started
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+Add the package dependency to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  kockatoos_nova_ai_chatbot:
+    path: ../kockatoos_nova_ai_chatbot # Or git/pub package reference
+```
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+Initialize `Nova` in your `main()` method before launching `runApp()`:
 
 ```dart
-const like = 'sample';
+import 'package:flutter/material.dart';
+import 'package:kockatoos_nova_ai_chatbot/kockatoos_nova_ai_chatbot.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Nova.initialize(
+    config: const NovaConfig(
+      apiKey: 'YOUR_API_KEY',
+    ),
+  );
+
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      home: Scaffold(
+        appBar: AppBar(title: const Text('Kockatoos Nova Chat')),
+        body: const Center(child: Text('App Content')),
+        floatingActionButton: const NovaFloatingButton(),
+      ),
+    );
+  }
+}
 ```
 
-## Additional information
+## Additional Information
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+For issues, contributions, and documentation, visit the [Kockatoos Repository](https://github.com/untitled-developers/kockatoos-nova-ai-chatbot).

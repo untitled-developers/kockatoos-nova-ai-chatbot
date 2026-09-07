@@ -1,4 +1,4 @@
-library nova_flutter;
+library;
 
 // Core & Config
 export 'src/config/kockatoos_nova_ai_chatbot_config.dart';
