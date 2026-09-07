@@ -2,7 +2,7 @@ name: kockatoos_nova_ai_chatbot
 description: "Official Kockatoos Nova Chatbot SDK for Flutter applications."
 version: 0.0.1
 homepage: https://kockatoos.com
-repository: https://github.com/untitled-developers/kockatoos_nova_ai_chatbot
+repository: https://github.com/untitled-developers/kockatoos-nova-ai-chatbot
 
 
 environment:
