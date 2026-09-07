@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../../config/kockatoos_nova_ai_chatbot_config.dart';
@@ -16,17 +17,49 @@ class NovaApiService {
   })  : _config = config,
         _client = client ?? http.Client();
 
-  String get _baseUrl => _config.baseUrl.endsWith('/')
-      ? _config.baseUrl.substring(0, _config.baseUrl.length - 1)
-      : _config.baseUrl;
+  Uri _buildUri(String endpointPath, [Map<String, String>? queryParams]) {
+    var base = _config.baseUrl.trim();
+    while (base.endsWith('/')) {
+      base = base.substring(0, base.length - 1);
+    }
+    if (base.endsWith('/api')) {
+      base = base.substring(0, base.length - 4);
+    }
+    if (base.endsWith('/v1')) {
+      base = base.substring(0, base.length - 3);
+    }
+    if (base.endsWith('/api')) {
+      base = base.substring(0, base.length - 4);
+    }
+
+    final cleanEndpoint = endpointPath.startsWith('/') ? endpointPath : '/$endpointPath';
+    var urlString = '$base$cleanEndpoint';
+
+    if (queryParams != null && queryParams.isNotEmpty) {
+      final query = queryParams.entries
+          .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .join('&');
+      urlString += '?$query';
+    }
+
+    if (_config.logLevel == NovaLogLevel.debug) {
+      debugPrint('[Nova SDK] API Request URL: $urlString');
+    }
+
+    return Uri.parse(urlString);
+  }
 
   /// Fetches remote widget configuration using the public key.
   Future<NovaWidgetConfig> fetchConfig(String publicKey) async {
-    final uri = Uri.parse('$_baseUrl/api/widget/config?key=${Uri.encodeComponent(publicKey)}');
+    final uri = _buildUri('/api/widget/config', {'key': publicKey});
     final response = await _client.get(uri).timeout(_config.timeout);
 
+    if (_config.logLevel == NovaLogLevel.debug) {
+      debugPrint('[Nova SDK] fetchConfig status: ${response.statusCode}, body: ${response.body}');
+    }
+
     if (response.statusCode != 200) {
-      throw Exception('Failed to fetch widget configuration: ${response.statusCode}');
+      throw Exception('Failed to fetch widget configuration (HTTP ${response.statusCode}): ${response.body}');
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -35,7 +68,7 @@ class NovaApiService {
 
   /// Obtains a new visitor session token.
   Future<String> fetchSessionToken(String publicKey) async {
-    final uri = Uri.parse('$_baseUrl/api/widget/session');
+    final uri = _buildUri('/api/widget/session');
     final response = await _client
         .post(
           uri,
@@ -44,8 +77,12 @@ class NovaApiService {
         )
         .timeout(_config.timeout);
 
+    if (_config.logLevel == NovaLogLevel.debug) {
+      debugPrint('[Nova SDK] fetchSessionToken status: ${response.statusCode}, body: ${response.body}');
+    }
+
     if (response.statusCode != 200) {
-      throw Exception('Failed to create widget session: ${response.statusCode}');
+      throw Exception('Failed to create widget session (HTTP ${response.statusCode}): ${response.body}');
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -58,7 +95,7 @@ class NovaApiService {
 
   /// Fetches existing chat history for the visitor session token.
   Future<List<NovaChatMessage>> fetchMessages(String token) async {
-    final uri = Uri.parse('$_baseUrl/api/widget/messages');
+    final uri = _buildUri('/api/widget/messages');
     final response = await _client
         .post(
           uri,
@@ -69,6 +106,10 @@ class NovaApiService {
           body: jsonEncode({'token': token}),
         )
         .timeout(_config.timeout);
+
+    if (_config.logLevel == NovaLogLevel.debug) {
+      debugPrint('[Nova SDK] fetchMessages status: ${response.statusCode}');
+    }
 
     if (response.statusCode != 200) {
       return [];
@@ -87,7 +128,7 @@ class NovaApiService {
     required String token,
     required String message,
   }) async* {
-    final uri = Uri.parse('$_baseUrl/api/widget/send');
+    final uri = _buildUri('/api/widget/send');
     final request = http.Request('POST', uri);
     request.headers['Content-Type'] = 'application/json';
     request.headers['Accept'] = 'text/event-stream';
@@ -96,6 +137,10 @@ class NovaApiService {
       'message': message,
     });
 
+    if (_config.logLevel == NovaLogLevel.debug) {
+      debugPrint('[Nova SDK] Streaming message to $uri');
+    }
+
     final response = await _client.send(request);
 
     if (response.statusCode == 401) {
@@ -103,7 +148,7 @@ class NovaApiService {
     }
 
     if (response.statusCode != 200) {
-      throw Exception('Server error status: ${response.statusCode}');
+      throw Exception('Server error status (HTTP ${response.statusCode})');
     }
 
     final lines = response.stream
@@ -134,7 +179,7 @@ class NovaApiService {
   /// Closes the visitor conversation session.
   Future<bool> closeConversation(String token) async {
     try {
-      final uri = Uri.parse('$_baseUrl/api/widget/conversations/close');
+      final uri = _buildUri('/api/widget/conversations/close');
       final response = await _client
           .post(
             uri,

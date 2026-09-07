@@ -137,6 +137,25 @@ class _NovaChatViewState extends State<NovaChatView> {
         Nova.instance.config.agentName ??
         'Kockatoos Nova';
 
+    final profilePicUrl = _controller.remoteConfig?.profilePicUrl;
+
+    Widget avatarChild;
+    if (profilePicUrl != null && profilePicUrl.trim().isNotEmpty) {
+      avatarChild = ClipOval(
+        child: Image.network(
+          profilePicUrl,
+          width: 40,
+          height: 40,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 22),
+        ),
+      );
+    } else {
+      avatarChild = const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 22);
+    }
+
+    final isEnabled = _controller.remoteConfig?.isEnabled ?? true;
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -156,7 +175,7 @@ class _NovaChatViewState extends State<NovaChatView> {
               ),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 22),
+            child: avatarChild,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -176,20 +195,20 @@ class _NovaChatViewState extends State<NovaChatView> {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF10B981),
+                      decoration: BoxDecoration(
+                        color: isEnabled ? const Color(0xFF10B981) : Colors.grey,
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Online • Usually replies instantly',
+                        isEnabled ? 'Online • Usually replies instantly' : 'Offline • Disabled by admin',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF64748B),
+                          color: isEnabled ? const Color(0xFF64748B) : Colors.grey,
                         ),
                       ),
                     ),
@@ -420,6 +439,8 @@ class _NovaChatViewState extends State<NovaChatView> {
   }
 
   Widget _buildInputBar(NovaTheme theme) {
+    final isEnabled = _controller.remoteConfig?.isEnabled ?? true;
+    final allowEmojis = _controller.remoteConfig?.allowEmojis ?? true;
     final isBusy = _controller.isStreaming || _controller.isTyping;
     final hasText = _textController.text.trim().isNotEmpty;
 
@@ -434,31 +455,33 @@ class _NovaChatViewState extends State<NovaChatView> {
         children: [
           Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.sentiment_satisfied_alt, color: Color(0xFF64748B)),
-                onPressed: _showEmojiPicker,
-              ),
+              if (allowEmojis)
+                IconButton(
+                  icon: const Icon(Icons.sentiment_satisfied_alt, color: Color(0xFF64748B)),
+                  onPressed: isEnabled ? _showEmojiPicker : null,
+                ),
               Expanded(
                 child: TextField(
                   controller: _textController,
+                  enabled: isEnabled,
                   minLines: 1,
                   maxLines: 4,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    hintText: 'Ask a question...',
-                    hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: isEnabled ? 'Ask a question...' : 'Chatbot is currently disabled by admin.',
+                    hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                   ),
                 ),
               ),
               IconButton(
                 icon: Icon(
                   Icons.send_rounded,
-                  color: (!isBusy && hasText) ? theme.primary : Colors.grey.shade400,
+                  color: (isEnabled && !isBusy && hasText) ? theme.primary : Colors.grey.shade400,
                 ),
-                onPressed: (!isBusy && hasText)
+                onPressed: (isEnabled && !isBusy && hasText)
                     ? () {
                         final text = _textController.text;
                         _textController.clear();

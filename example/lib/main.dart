@@ -4,11 +4,19 @@ import 'package:kockatoos_nova_ai_chatbot/kockatoos_nova_ai_chatbot.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Initialize Nova with Config
+  // ---------------------------------------------------------------------------
+  // LIVE BACKEND CONFIGURATION
+  // Replace 'https://chatbot.kockatoos.com' with your live backend server URL
+  // Replace 'YOUR_LIVE_PUBLIC_KEY' with your workspace public key from admin
+  // ---------------------------------------------------------------------------
+  const String liveBackendUrl = 'https://chatbot.kockatoos.com';
+  const String workspacePublicKey = 'kc_6UjhqKZO9QtLOEecfPhUSuZhx7waQTv6';
+
+  // Initialize Nova SDK with Live Backend Server & Admin Panel Config
   await Nova.initialize(
     config: const NovaConfig(
-      apiKey: 'nova_live_pk_test123',
-      theme: 'emerald',
+      apiKey: workspacePublicKey,
+      baseUrl: liveBackendUrl,
       logLevel: NovaLogLevel.debug,
     ),
   );
@@ -26,7 +34,7 @@ class MyApp extends StatelessWidget {
       title: 'Kockatoos Nova Chatbot Demo',
       theme: ThemeData(
         useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF059669)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFFF05A2B)),
       ),
       home: const HomeScreen(),
     );
@@ -59,7 +67,8 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.smart_toy_outlined, size: 64, color: Color(0xFF059669)),
+                  Icon(Icons.smart_toy_outlined,
+                      size: 64, color: Color(0xFFF05A2B)),
                   SizedBox(height: 16),
                   Text(
                     'Welcome to Kockatoos Nova SDK Demo',
@@ -67,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   SizedBox(height: 8),
                   Text(
-                    'Tap the floating action button below or switch to the Chat tab to interact with the native Flutter chat widget.',
+                    'Tap the floating action button below or switch to the Chat tab to interact with the live native Flutter chat widget.',
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Colors.grey),
                   ),
@@ -86,7 +95,8 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.chat), label: 'Chat View'),
         ],
       ),
-      floatingActionButton: _selectedIndex == 0 ? const NovaFloatingButton() : null,
+      floatingActionButton:
+          _selectedIndex == 0 ? const NovaFloatingButton() : null,
     );
   }
 }

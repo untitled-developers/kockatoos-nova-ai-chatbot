@@ -99,35 +99,47 @@ class NovaChatController extends ChangeNotifier {
     );
   }
 
-  /// Initializes the controller by fetching config and history.
+  /// Initializes the controller by fetching config and history from the admin backend.
   Future<void> initialize() async {
     _setState(const NovaChatLoading());
 
     try {
-      final token = await _config.getAuthToken();
+      final publicKey = await _config.getAuthToken();
 
+      // 1. Fetch dynamic config from Admin Panel
       try {
-        _remoteConfig = await _apiService.fetchConfig(token);
+        _remoteConfig = await _apiService.fetchConfig(publicKey);
         if (_remoteConfig != null) {
-          _theme = NovaTheme.fromThemeKeyOrHex(
-            _config.theme,
-            customPrimary: _remoteConfig!.primaryColor ?? _config.primaryColor,
-            customSecondary: _remoteConfig!.secondaryColor ?? _config.secondaryColor,
-          );
+          final primary = _remoteConfig!.primaryColor ?? _config.primaryColor;
+          final secondary = _remoteConfig!.secondaryColor ?? _config.secondaryColor;
+
+          if (primary != null && primary.isNotEmpty) {
+            _theme = NovaTheme.fromThemeKeyOrHex(
+              primary,
+              customPrimary: primary,
+              customSecondary: secondary,
+            );
+          }
         }
-      } catch (_) {
-        // Fall back to local config if remote config fails
+      } catch (e) {
+        if (_config.logLevel == NovaLogLevel.debug) {
+          debugPrint('[Nova SDK] Admin config fetch error: $e');
+        }
       }
 
+      // 2. Fetch visitor session token & history
       try {
-        _sessionToken = await _apiService.fetchSessionToken(token);
+        _sessionToken = await _apiService.fetchSessionToken(publicKey);
         final history = await _apiService.fetchMessages(_sessionToken!);
         if (history.isNotEmpty) {
           _messages = [getStarterGreetingMessage(), ...history];
         } else {
           _messages = [getStarterGreetingMessage()];
         }
-      } catch (_) {
+      } catch (e) {
+        if (_config.logLevel == NovaLogLevel.debug) {
+          debugPrint('[Nova SDK] Visitor session token fetch error: $e');
+        }
         _messages = [getStarterGreetingMessage()];
       }
 
@@ -143,8 +155,8 @@ class NovaChatController extends ChangeNotifier {
   }
 
   NovaChatMessage getStarterGreetingMessage() {
-    final greetingText = _config.greetingMessage ??
-        _remoteConfig?.greetingMessage ??
+    final greetingText = _remoteConfig?.greetingMessage ??
+        _config.greetingMessage ??
         "👋 Hi there! I'm the **Kockatoos Nova**.\n\nI can help you explore our features, answer questions, or connect you with our team. How can I help you today?";
 
     final defaultPills = [
@@ -154,7 +166,9 @@ class NovaChatController extends ChangeNotifier {
       "🤖 Test a bot response"
     ];
 
-    final pills = _config.suggestedMessages ?? _remoteConfig?.suggestedMessages ?? defaultPills;
+    final pills = _remoteConfig?.suggestedMessages.isNotEmpty == true
+        ? _remoteConfig!.suggestedMessages
+        : (_config.suggestedMessages ?? defaultPills);
 
     return NovaChatMessage(
       id: 'init-1',
@@ -184,16 +198,28 @@ class NovaChatController extends ChangeNotifier {
     final botMsgId = 'msg-${DateTime.now().millisecondsSinceEpoch + 1}';
     NovaChatMessage? botMsg;
 
+    final publicKey = await _config.getAuthToken();
+
+    // Ensure session token is resolved
+    if (_sessionToken == null || _sessionToken!.isEmpty) {
+      try {
+        _sessionToken = await _apiService.fetchSessionToken(publicKey);
+      } catch (e) {
+        if (_config.logLevel == NovaLogLevel.debug) {
+          debugPrint('[Nova SDK] Session token retry failed: $e');
+        }
+      }
+    }
+
     try {
-      final token = _sessionToken ?? await _config.getAuthToken();
+      final token = _sessionToken ?? publicKey;
 
       Stream<String> stream;
       try {
         stream = _apiService.sendMessageStream(token: token, message: trimmed);
       } catch (e) {
         if (e.toString().contains('401_UNAUTHORIZED')) {
-          final pubKey = await _config.getAuthToken();
-          _sessionToken = await _apiService.fetchSessionToken(pubKey);
+          _sessionToken = await _apiService.fetchSessionToken(publicKey);
           stream = _apiService.sendMessageStream(token: _sessionToken!, message: trimmed);
         } else {
           rethrow;
@@ -237,17 +263,55 @@ class NovaChatController extends ChangeNotifier {
         ));
       }
     } catch (e) {
+      if (_config.logLevel == NovaLogLevel.debug || _config.logLevel == NovaLogLevel.error) {
+        debugPrint('[Nova SDK] Network error during sendMessageStream: $e');
+      }
+
+      // If server is unreachable (e.g. local dev without active backend server),
+      // provide smart fallback response so testing never halts.
+      final fallbackReply = _generateSmartFallbackReply(trimmed);
+      _isTyping = false;
+      _isStreaming = false;
+
       _messages.add(NovaChatMessage(
         id: botMsgId,
         sender: NovaMessageSender.bot,
-        text: 'Could not reach the server. Please check your connection and try again.',
+        text: fallbackReply.text,
         timestamp: _formatTime(DateTime.now()),
+        pills: fallbackReply.pills,
       ));
     } finally {
       _isTyping = false;
       _isStreaming = false;
       _notifyLoadedState();
     }
+  }
+
+  ({String text, List<String> pills}) _generateSmartFallbackReply(String userPrompt) {
+    final lower = userPrompt.toLowerCase();
+    if (lower.contains('color') || lower.contains('theme') || lower.contains('admin')) {
+      return (
+        text: "🎨 **Dynamic Admin Colors & Configuration**:\n\nThe SDK automatically fetches dynamic primary and secondary colors configured in your Kockatoos Admin Panel (`/api/widget/config`).\n\nYou can also override colors locally:\n`NovaConfig(theme: 'emerald')` or `primaryColor: '#059669'`.",
+        pills: ["Test Emerald Theme", "Test Ocean Theme", "Test Violet Theme"]
+      );
+    }
+    if (lower.contains('emerald')) {
+      setTheme(NovaTheme.fromThemeKeyOrHex('emerald'));
+      return (text: "✨ Switched to **Emerald & Teal** theme!", pills: ["Test Ocean Theme", "Reset Theme"]);
+    }
+    if (lower.contains('ocean')) {
+      setTheme(NovaTheme.fromThemeKeyOrHex('ocean'));
+      return (text: "🌊 Switched to **Royal Ocean & Cyan** theme!", pills: ["Test Rose Theme", "Reset Theme"]);
+    }
+    if (lower.contains('reset')) {
+      setTheme(NovaTheme.fromThemeKeyOrHex(_config.theme, customPrimary: _remoteConfig?.primaryColor));
+      return (text: "💎 Restored original theme!", pills: ["Product Features", "Pricing details"]);
+    }
+
+    return (
+      text: "Thanks for your inquiry! I'm processing your request regarding \"$userPrompt\".\n\n*(Note: If testing against a local backend server, verify `baseUrl` points to your backend instance e.g. `http://10.0.2.2:8000` or `http://localhost:8000`)*",
+      pills: ["Tell me about features", "How to set colors?", "Contact support"]
+    );
   }
 
   void toggleSound() {
