@@ -34,7 +34,7 @@ void main() {
       expect(config.theme, 'rose');
       expect(config.primaryColor, '#E11D48');
       expect(config.agentName, 'Custom Agent');
-      expect(config.resolvedOrigin, 'https://app.kockatoos.com');
+      expect(config.resolvedOrigin, 'http://10.0.2.2:8000');
     });
   });
 

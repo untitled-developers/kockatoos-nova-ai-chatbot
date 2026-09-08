@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../../core/kockatoos_nova_ai_chatbot_client.dart';
 import '../../data/models/nova_chat_message.dart';
@@ -338,14 +339,7 @@ class _NovaChatViewState extends State<NovaChatView> {
                       ),
                     ],
                   ),
-                  child: Text(
-                    msg.text,
-                    style: TextStyle(
-                      fontSize: 14,
-                      height: 1.4,
-                      color: isUser ? theme.userBubbleText : theme.botBubbleText,
-                    ),
-                  ),
+                  child: _buildMessageTextContent(msg, isUser, theme),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -543,6 +537,47 @@ class _NovaChatViewState extends State<NovaChatView> {
           },
         );
       },
+    );
+  }
+
+  Widget _buildMessageTextContent(NovaChatMessage msg, bool isUser, NovaTheme theme) {
+    final textColor = isUser ? theme.userBubbleText : theme.botBubbleText;
+
+    if (isUser) {
+      return Text(
+        msg.text,
+        style: TextStyle(
+          fontSize: 14,
+          height: 1.4,
+          color: textColor,
+        ),
+      );
+    }
+
+    return MarkdownBody(
+      data: msg.text,
+      selectable: true,
+      shrinkWrap: true,
+      styleSheet: MarkdownStyleSheet(
+        p: TextStyle(fontSize: 14, height: 1.4, color: textColor),
+        strong: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
+        em: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: textColor),
+        code: TextStyle(
+          fontSize: 13,
+          fontFamily: 'monospace',
+          backgroundColor: Colors.black.withValues(alpha: 0.06),
+          color: theme.primaryText,
+        ),
+        codeblockDecoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        codeblockPadding: const EdgeInsets.all(12),
+        listBullet: TextStyle(fontSize: 14, color: textColor),
+        h1: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+        h2: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
+        h3: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor),
+      ),
     );
   }
 
