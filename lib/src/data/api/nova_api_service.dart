@@ -17,19 +17,31 @@ class NovaApiService {
   })  : _config = config,
         _client = client ?? http.Client();
 
+  Map<String, String> _buildHeaders([Map<String, String>? base]) {
+    final headers = <String, String>{...?base};
+    final origin = _config.resolvedOrigin;
+    if (origin != null && origin.isNotEmpty) {
+      headers['Origin'] = origin;
+    }
+    return headers;
+  }
+
   Uri _buildUri(String endpointPath, [Map<String, String>? queryParams]) {
     var base = _config.baseUrl.trim();
     while (base.endsWith('/')) {
       base = base.substring(0, base.length - 1);
     }
-    if (base.endsWith('/api')) {
-      base = base.substring(0, base.length - 4);
-    }
     if (base.endsWith('/v1')) {
       base = base.substring(0, base.length - 3);
+      while (base.endsWith('/')) {
+        base = base.substring(0, base.length - 1);
+      }
     }
     if (base.endsWith('/api')) {
       base = base.substring(0, base.length - 4);
+      while (base.endsWith('/')) {
+        base = base.substring(0, base.length - 1);
+      }
     }
 
     final cleanEndpoint = endpointPath.startsWith('/') ? endpointPath : '/$endpointPath';
@@ -52,7 +64,7 @@ class NovaApiService {
   /// Fetches remote widget configuration using the public key.
   Future<NovaWidgetConfig> fetchConfig(String publicKey) async {
     final uri = _buildUri('/api/widget/config', {'key': publicKey});
-    final response = await _client.get(uri).timeout(_config.timeout);
+    final response = await _client.get(uri, headers: _buildHeaders()).timeout(_config.timeout);
 
     if (_config.logLevel == NovaLogLevel.debug) {
       debugPrint('[Nova SDK] fetchConfig status: ${response.statusCode}, body: ${response.body}');
@@ -72,7 +84,7 @@ class NovaApiService {
     final response = await _client
         .post(
           uri,
-          headers: {'Content-Type': 'application/json'},
+          headers: _buildHeaders({'Content-Type': 'application/json'}),
           body: jsonEncode({'key': publicKey}),
         )
         .timeout(_config.timeout);
@@ -99,10 +111,10 @@ class NovaApiService {
     final response = await _client
         .post(
           uri,
-          headers: {
+          headers: _buildHeaders({
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-          },
+          }),
           body: jsonEncode({'token': token}),
         )
         .timeout(_config.timeout);
@@ -130,8 +142,10 @@ class NovaApiService {
   }) async* {
     final uri = _buildUri('/api/widget/send');
     final request = http.Request('POST', uri);
-    request.headers['Content-Type'] = 'application/json';
-    request.headers['Accept'] = 'text/event-stream';
+    request.headers.addAll(_buildHeaders({
+      'Content-Type': 'application/json',
+      'Accept': 'text/event-stream',
+    }));
     request.body = jsonEncode({
       'token': token,
       'message': message,
@@ -152,7 +166,7 @@ class NovaApiService {
     }
 
     final lines = response.stream
-        .transform(utf8.decoder)
+        .transform(const Utf8Decoder(allowMalformed: true))
         .transform(const LineSplitter());
 
     await for (final line in lines) {
@@ -183,7 +197,7 @@ class NovaApiService {
       final response = await _client
           .post(
             uri,
-            headers: {'Content-Type': 'application/json'},
+            headers: _buildHeaders({'Content-Type': 'application/json'}),
             body: jsonEncode({'token': token}),
           )
           .timeout(_config.timeout);

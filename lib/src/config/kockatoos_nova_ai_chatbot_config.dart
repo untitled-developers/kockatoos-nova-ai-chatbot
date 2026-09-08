@@ -18,11 +18,13 @@ class NovaConfig {
   final String? greetingMessage;
   final List<String>? suggestedMessages;
   final bool allowEmojis;
+  final String? origin;
 
   const NovaConfig({
     this.apiKey,
     this.tokenResolver,
-    this.baseUrl = 'https://api.kockatoos.com/v1',
+    this.baseUrl = 'http://10.0.2.2:8000',
+    this.origin,
     this.logLevel = kReleaseMode ? NovaLogLevel.none : NovaLogLevel.error,
     this.timeout = const Duration(seconds: 15),
     this.theme = 'indigo',
@@ -42,5 +44,18 @@ class NovaConfig {
       return await tokenResolver!();
     }
     return apiKey!;
+  }
+
+  String? get resolvedOrigin {
+    if (origin != null && origin!.trim().isNotEmpty) {
+      return origin!.trim();
+    }
+    try {
+      final uri = Uri.parse(baseUrl);
+      if (uri.hasScheme && uri.hasAuthority) {
+        return uri.origin;
+      }
+    } catch (_) {}
+    return null;
   }
 }

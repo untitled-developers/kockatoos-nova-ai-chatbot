@@ -21,9 +21,11 @@ void main() {
       expect(customHex.primary, const Color(0xFF2563EB));
     });
 
-    test('NovaConfig supports theme and color overrides', () {
+    test('NovaConfig supports theme, origin, and color overrides', () {
       const config = NovaConfig(
         apiKey: 'test_pk',
+        baseUrl: 'http://10.0.2.2:8000',
+        origin: 'http://10.0.2.2:8000',
         theme: 'rose',
         primaryColor: '#E11D48',
         agentName: 'Custom Agent',
@@ -32,6 +34,7 @@ void main() {
       expect(config.theme, 'rose');
       expect(config.primaryColor, '#E11D48');
       expect(config.agentName, 'Custom Agent');
+      expect(config.resolvedOrigin, 'https://app.kockatoos.com');
     });
   });
 
@@ -102,7 +105,8 @@ void main() {
   });
 
   group('UI Widgets', () {
-    testWidgets('renders NovaFloatingButton and triggers bottom sheet', (WidgetTester tester) async {
+    testWidgets('renders NovaFloatingButton and triggers bottom sheet',
+        (WidgetTester tester) async {
       const config = NovaConfig(apiKey: 'widget_key');
       await Nova.initialize(config: config);
 
@@ -122,7 +126,8 @@ void main() {
       expect(find.byType(NovaChatView), findsOneWidget);
     });
 
-    testWidgets('renders standalone NovaChatView with input field and header', (WidgetTester tester) async {
+    testWidgets('renders standalone NovaChatView with input field and header',
+        (WidgetTester tester) async {
       const config = NovaConfig(apiKey: 'view_key');
       await Nova.initialize(config: config);
 

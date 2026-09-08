@@ -213,46 +213,54 @@ class NovaChatController extends ChangeNotifier {
 
     try {
       final token = _sessionToken ?? publicKey;
+      bool hasStreamed = false;
 
-      Stream<String> stream;
+      Future<void> consumeStream(String activeToken) async {
+        final stream = _apiService.sendMessageStream(token: activeToken, message: trimmed);
+        await for (final delta in stream) {
+          final current = botMsg;
+          if (current == null) {
+            _isTyping = false;
+            _isStreaming = true;
+            final newBotMsg = NovaChatMessage(
+              id: botMsgId,
+              sender: NovaMessageSender.bot,
+              text: delta,
+              timestamp: _formatTime(DateTime.now()),
+              isStreaming: true,
+            );
+            botMsg = newBotMsg;
+            _messages.add(newBotMsg);
+          } else {
+            final updatedText = current.text + delta;
+            final updatedMsg = current.copyWith(text: updatedText);
+            botMsg = updatedMsg;
+            final index = _messages.indexWhere((m) => m.id == botMsgId);
+            if (index != -1) {
+              _messages[index] = updatedMsg;
+            }
+          }
+          hasStreamed = true;
+          _notifyLoadedState();
+        }
+      }
+
       try {
-        stream = _apiService.sendMessageStream(token: token, message: trimmed);
+        await consumeStream(token);
       } catch (e) {
-        if (e.toString().contains('401_UNAUTHORIZED')) {
+        if (!hasStreamed && e.toString().contains('401_UNAUTHORIZED')) {
           _sessionToken = await _apiService.fetchSessionToken(publicKey);
-          stream = _apiService.sendMessageStream(token: _sessionToken!, message: trimmed);
+          await consumeStream(_sessionToken!);
         } else {
           rethrow;
         }
       }
 
-      await for (final delta in stream) {
-        if (botMsg == null) {
-          _isTyping = false;
-          _isStreaming = true;
-          botMsg = NovaChatMessage(
-            id: botMsgId,
-            sender: NovaMessageSender.bot,
-            text: delta,
-            timestamp: _formatTime(DateTime.now()),
-            isStreaming: true,
-          );
-          _messages.add(botMsg);
-        } else {
-          final updatedText = botMsg.text + delta;
-          botMsg = botMsg.copyWith(text: updatedText);
-          final index = _messages.indexWhere((m) => m.id == botMsgId);
-          if (index != -1) {
-            _messages[index] = botMsg;
-          }
-        }
-        _notifyLoadedState();
-      }
-
-      if (botMsg != null) {
+      final finalBotMsg = botMsg;
+      if (finalBotMsg != null) {
         final index = _messages.indexWhere((m) => m.id == botMsgId);
         if (index != -1) {
-          _messages[index] = botMsg.copyWith(isStreaming: false);
+          _messages[index] = finalBotMsg.copyWith(isStreaming: false);
         }
       } else {
         _messages.add(NovaChatMessage(

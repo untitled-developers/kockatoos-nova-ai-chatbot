@@ -9,8 +9,8 @@ void main() async {
   // Replace 'https://chatbot.kockatoos.com' with your live backend server URL
   // Replace 'YOUR_LIVE_PUBLIC_KEY' with your workspace public key from admin
   // ---------------------------------------------------------------------------
-  const String liveBackendUrl = 'https://chatbot.kockatoos.com';
-  const String workspacePublicKey = 'kc_6UjhqKZO9QtLOEecfPhUSuZhx7waQTv6';
+  const String liveBackendUrl = 'http://10.0.2.2:8000';
+  const String workspacePublicKey = 'kc_3XA9M9ccS3iy3Et8b8TJ6vltrRmlYOxA';
 
   // Initialize Nova SDK with Live Backend Server & Admin Panel Config
   await Nova.initialize(
