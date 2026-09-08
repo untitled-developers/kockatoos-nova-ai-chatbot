@@ -1,6 +1,8 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/kockatoos_nova_ai_chatbot_config.dart';
 import '../../core/kockatoos_nova_ai_chatbot_client.dart';
@@ -40,7 +42,8 @@ class _NovaChatViewState extends State<NovaChatView> {
       _controller = NovaChatController(config: Nova.instance.config);
     } else {
       _controller = NovaChatController(
-        config: NovaConfig(apiKey: 'uninitialized', logLevel: NovaLogLevel.none),
+        config:
+            NovaConfig(apiKey: 'uninitialized', logLevel: NovaLogLevel.none),
       );
     }
 
@@ -158,7 +161,8 @@ class _NovaChatViewState extends State<NovaChatView> {
                         backgroundColor: theme.primary,
                         elevation: 3,
                         onPressed: () => _scrollToBottom(true),
-                        child: const Icon(Icons.arrow_downward, color: Colors.white, size: 18),
+                        child: const Icon(Icons.arrow_downward,
+                            color: Colors.white, size: 18),
                       ),
                     ),
                 ],
@@ -186,11 +190,13 @@ class _NovaChatViewState extends State<NovaChatView> {
           width: 40,
           height: 40,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 22),
+          errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy_outlined,
+              color: Colors.white, size: 22),
         ),
       );
     } else {
-      avatarChild = const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 22);
+      avatarChild =
+          const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 22);
     }
 
     final isEnabled = _controller.remoteConfig?.isEnabled ?? true;
@@ -235,19 +241,23 @@ class _NovaChatViewState extends State<NovaChatView> {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: isEnabled ? const Color(0xFF10B981) : Colors.grey,
+                        color:
+                            isEnabled ? const Color(0xFF10B981) : Colors.grey,
                         shape: BoxShape.circle,
                       ),
                     ),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        isEnabled ? 'Online • Usually replies instantly' : 'Offline • Disabled by admin',
+                        isEnabled
+                            ? 'Online • Usually replies instantly'
+                            : 'Offline • Disabled by admin',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
-                          color: isEnabled ? const Color(0xFF64748B) : Colors.grey,
+                          color:
+                              isEnabled ? const Color(0xFF64748B) : Colors.grey,
                         ),
                       ),
                     ),
@@ -294,7 +304,8 @@ class _NovaChatViewState extends State<NovaChatView> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
+              const Icon(Icons.error_outline,
+                  color: Colors.redAccent, size: 48),
               const SizedBox(height: 12),
               Text(
                 state.message,
@@ -305,7 +316,8 @@ class _NovaChatViewState extends State<NovaChatView> {
               ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: theme.primary),
                 onPressed: () => _controller.initialize(),
-                child: const Text('Retry', style: TextStyle(color: Colors.white)),
+                child:
+                    const Text('Retry', style: TextStyle(color: Colors.white)),
               ),
             ],
           ),
@@ -341,7 +353,8 @@ class _NovaChatViewState extends State<NovaChatView> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isUser) ...[
@@ -354,16 +367,19 @@ class _NovaChatViewState extends State<NovaChatView> {
                 ),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 18),
+              child: const Icon(Icons.smart_toy_outlined,
+                  color: Colors.white, size: 18),
             ),
             const SizedBox(width: 10),
           ],
           Flexible(
             child: Column(
-              crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              crossAxisAlignment:
+                  isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: isUser ? theme.userBubbleBg : theme.botBubbleBg,
                     borderRadius: BorderRadius.only(
@@ -385,7 +401,8 @@ class _NovaChatViewState extends State<NovaChatView> {
                 const SizedBox(height: 4),
                 Text(
                   msg.timestamp,
-                  style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                  style:
+                      const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
                 ),
                 if (!isUser && msg.pills != null && msg.pills!.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -400,11 +417,13 @@ class _NovaChatViewState extends State<NovaChatView> {
                         },
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
                             color: theme.primaryLight,
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: theme.primary.withValues(alpha: 0.3)),
+                            border: Border.all(
+                                color: theme.primary.withValues(alpha: 0.3)),
                           ),
                           child: Text(
                             pill,
@@ -468,7 +487,10 @@ class _NovaChatViewState extends State<NovaChatView> {
                 children: [
                   Text(
                     '$agentName is typing',
-                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF64748B)),
+                    style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF64748B)),
                   ),
                   const SizedBox(width: 8),
                   _AnimatedBouncingDots(color: theme.primary),
@@ -500,7 +522,8 @@ class _NovaChatViewState extends State<NovaChatView> {
             children: [
               if (allowEmojis)
                 IconButton(
-                  icon: const Icon(Icons.sentiment_satisfied_alt, color: Color(0xFF64748B)),
+                  icon: const Icon(Icons.sentiment_satisfied_alt,
+                      color: Color(0xFF64748B)),
                   onPressed: isEnabled ? _showEmojiPicker : null,
                 ),
               Expanded(
@@ -511,18 +534,24 @@ class _NovaChatViewState extends State<NovaChatView> {
                   maxLines: 4,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    hintText: isEnabled ? 'Ask a question...' : 'Chatbot is currently disabled by admin.',
-                    hintStyle: const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                    hintText: isEnabled
+                        ? 'Ask a question...'
+                        : 'Chatbot is currently disabled by admin.',
+                    hintStyle:
+                        const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
                     border: InputBorder.none,
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                    contentPadding:
+                        const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                   ),
                 ),
               ),
               IconButton(
                 icon: Icon(
                   Icons.send_rounded,
-                  color: (isEnabled && !isBusy && hasText) ? theme.primary : Colors.grey.shade400,
+                  color: (isEnabled && !isBusy && hasText)
+                      ? theme.primary
+                      : Colors.grey.shade400,
                 ),
                 onPressed: (isEnabled && !isBusy && hasText)
                     ? () {
@@ -543,7 +572,8 @@ class _NovaChatViewState extends State<NovaChatView> {
                 padding: const EdgeInsets.only(right: 8, bottom: 4),
                 child: Text(
                   '${_textController.text.length}/1000',
-                  style: const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                  style:
+                      const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
                 ),
               ),
             ],
@@ -561,7 +591,20 @@ class _NovaChatViewState extends State<NovaChatView> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (context) {
-        final emojis = ['👋', '🚀', '🎨', '💳', '🤖', '✨', '👍', '🔥', '❤️', '💡', '💬', '❓'];
+        final emojis = [
+          '👋',
+          '🚀',
+          '🎨',
+          '💳',
+          '🤖',
+          '✨',
+          '👍',
+          '🔥',
+          '❤️',
+          '💡',
+          '💬',
+          '❓'
+        ];
         return GridView.builder(
           padding: const EdgeInsets.all(16),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -581,7 +624,8 @@ class _NovaChatViewState extends State<NovaChatView> {
                 Navigator.of(context).pop();
               },
               child: Center(
-                child: Text(emojis[index], style: const TextStyle(fontSize: 24)),
+                child:
+                    Text(emojis[index], style: const TextStyle(fontSize: 24)),
               ),
             );
           },
@@ -590,7 +634,8 @@ class _NovaChatViewState extends State<NovaChatView> {
     );
   }
 
-  Widget _buildMessageTextContent(NovaChatMessage msg, bool isUser, NovaTheme theme) {
+  Widget _buildMessageTextContent(
+      NovaChatMessage msg, bool isUser, NovaTheme theme) {
     final textColor = isUser ? theme.userBubbleText : theme.botBubbleText;
 
     if (isUser) {
@@ -608,10 +653,25 @@ class _NovaChatViewState extends State<NovaChatView> {
       data: msg.text,
       selectable: true,
       shrinkWrap: true,
+      onTapLink: (text, href, title) async {
+        if (href != null && href.trim().isNotEmpty) {
+          final uri = Uri.tryParse(href.trim());
+          if (uri != null && await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        }
+      },
       styleSheet: MarkdownStyleSheet(
         p: TextStyle(fontSize: 14, height: 1.4, color: textColor),
-        strong: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
-        em: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: textColor),
+        a: TextStyle(
+          color: isUser ? theme.userBubbleText : theme.primary,
+          decoration: TextDecoration.underline,
+          fontWeight: FontWeight.w600,
+        ),
+        strong: TextStyle(
+            fontSize: 14, fontWeight: FontWeight.bold, color: textColor),
+        em: TextStyle(
+            fontSize: 14, fontStyle: FontStyle.italic, color: textColor),
         code: TextStyle(
           fontSize: 13,
           fontFamily: 'monospace',
@@ -624,9 +684,12 @@ class _NovaChatViewState extends State<NovaChatView> {
         ),
         codeblockPadding: const EdgeInsets.all(12),
         listBullet: TextStyle(fontSize: 14, color: textColor),
-        h1: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
-        h2: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
-        h3: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: textColor),
+        h1: TextStyle(
+            fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+        h2: TextStyle(
+            fontSize: 16, fontWeight: FontWeight.bold, color: textColor),
+        h3: TextStyle(
+            fontSize: 15, fontWeight: FontWeight.bold, color: textColor),
       ),
     );
   }
@@ -646,12 +709,14 @@ class _NovaChatViewState extends State<NovaChatView> {
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: _controller.theme.primary),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: _controller.theme.primary),
               onPressed: () {
                 Navigator.of(context).pop();
                 _controller.resetConversation();
               },
-              child: const Text('Confirm', style: TextStyle(color: Colors.white)),
+              child:
+                  const Text('Confirm', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -668,7 +733,8 @@ class _AnimatedMessageBubble extends StatefulWidget {
   State<_AnimatedMessageBubble> createState() => _AnimatedMessageBubbleState();
 }
 
-class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble> with SingleTickerProviderStateMixin {
+class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _fadeAnimation;
   late final Animation<Offset> _slideAnimation;
@@ -681,7 +747,8 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble> with Sin
       duration: const Duration(milliseconds: 240),
     );
 
-    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _fadeAnimation =
+        CurvedAnimation(parent: _controller, curve: Curves.easeOut);
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.08),
       end: Offset.zero,
@@ -721,7 +788,8 @@ class _PulsingAvatarRing extends StatefulWidget {
   State<_PulsingAvatarRing> createState() => _PulsingAvatarRingState();
 }
 
-class _PulsingAvatarRingState extends State<_PulsingAvatarRing> with SingleTickerProviderStateMixin {
+class _PulsingAvatarRingState extends State<_PulsingAvatarRing>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scaleAnimation;
   late final Animation<double> _opacityAnimation;
@@ -752,18 +820,21 @@ class _PulsingAvatarRingState extends State<_PulsingAvatarRing> with SingleTicke
   @override
   Widget build(BuildContext context) {
     Widget avatarChild;
-    if (widget.profilePicUrl != null && widget.profilePicUrl!.trim().isNotEmpty) {
+    if (widget.profilePicUrl != null &&
+        widget.profilePicUrl!.trim().isNotEmpty) {
       avatarChild = ClipOval(
         child: Image.network(
           widget.profilePicUrl!,
           width: 32,
           height: 32,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 18),
+          errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy_outlined,
+              color: Colors.white, size: 18),
         ),
       );
     } else {
-      avatarChild = const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 18);
+      avatarChild =
+          const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 18);
     }
 
     return SizedBox(
@@ -782,7 +853,8 @@ class _PulsingAvatarRingState extends State<_PulsingAvatarRing> with SingleTicke
                   height: 32,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: widget.theme.primary.withValues(alpha: _opacityAnimation.value),
+                    color: widget.theme.primary
+                        .withValues(alpha: _opacityAnimation.value),
                   ),
                 ),
               );
@@ -792,7 +864,8 @@ class _PulsingAvatarRingState extends State<_PulsingAvatarRing> with SingleTicke
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [widget.theme.gradientFrom, widget.theme.gradientTo]),
+              gradient: LinearGradient(
+                  colors: [widget.theme.gradientFrom, widget.theme.gradientTo]),
               shape: BoxShape.circle,
             ),
             child: avatarChild,
@@ -811,7 +884,8 @@ class _AnimatedBouncingDots extends StatefulWidget {
   State<_AnimatedBouncingDots> createState() => _AnimatedBouncingDotsState();
 }
 
-class _AnimatedBouncingDotsState extends State<_AnimatedBouncingDots> with TickerProviderStateMixin {
+class _AnimatedBouncingDotsState extends State<_AnimatedBouncingDots>
+    with TickerProviderStateMixin {
   late final List<AnimationController> _controllers;
   late final List<Animation<double>> _animations;
 
