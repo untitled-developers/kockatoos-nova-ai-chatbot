@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/kockatoos_nova_ai_chatbot_client.dart';
 import '../controllers/nova_chat_controller.dart';
+import '../theme/nova_theme.dart';
 import 'nova_chat_view.dart';
 
 class NovaFloatingButton extends StatefulWidget {
@@ -23,8 +24,11 @@ class _NovaFloatingButtonState extends State<NovaFloatingButton> with SingleTick
   NovaChatController? _internalController;
   bool _isPressed = false;
 
-  NovaChatController get _effectiveController =>
-      widget.controller ?? (_internalController ??= NovaChatController(config: Nova.instance.config));
+  NovaChatController? get _effectiveController {
+    if (widget.controller != null) return widget.controller;
+    if (!Nova.isInitialized) return null;
+    return _internalController ??= NovaChatController(config: Nova.instance.config);
+  }
 
   @override
   void initState() {
@@ -53,7 +57,7 @@ class _NovaFloatingButtonState extends State<NovaFloatingButton> with SingleTick
   @override
   Widget build(BuildContext context) {
     final activeController = _effectiveController;
-    final theme = activeController.theme;
+    final theme = activeController?.theme ?? NovaTheme.defaultKockatoos;
 
     return AnimatedScale(
       scale: _isPressed ? 0.92 : 1.0,
@@ -63,6 +67,18 @@ class _NovaFloatingButtonState extends State<NovaFloatingButton> with SingleTick
         onTapUp: (_) => setState(() => _isPressed = false),
         onTapCancel: () => setState(() => _isPressed = false),
         onTap: () {
+          if (activeController == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Nova SDK is not initialized. Please call `await Nova.initialize(...)` in your main() function before using NovaFloatingButton.',
+                ),
+                duration: Duration(seconds: 4),
+              ),
+            );
+            return;
+          }
+
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,

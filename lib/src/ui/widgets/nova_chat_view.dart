@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
+import '../../config/kockatoos_nova_ai_chatbot_config.dart';
 import '../../core/kockatoos_nova_ai_chatbot_client.dart';
 import '../../data/models/nova_chat_message.dart';
 import '../controllers/nova_chat_controller.dart';
@@ -33,7 +34,16 @@ class _NovaChatViewState extends State<NovaChatView> {
   @override
   void initState() {
     super.initState();
-    _controller = widget.controller ?? NovaChatController(config: Nova.instance.config);
+    if (widget.controller != null) {
+      _controller = widget.controller!;
+    } else if (Nova.isInitialized) {
+      _controller = NovaChatController(config: Nova.instance.config);
+    } else {
+      _controller = NovaChatController(
+        config: NovaConfig(apiKey: 'uninitialized', logLevel: NovaLogLevel.none),
+      );
+    }
+
     _controller.addListener(_onControllerUpdate);
     _scrollController.addListener(_onScroll);
 
