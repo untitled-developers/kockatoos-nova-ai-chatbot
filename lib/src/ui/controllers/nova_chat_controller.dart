@@ -92,11 +92,32 @@ class NovaChatController extends ChangeNotifier {
     NovaApiService? apiService,
   }) : _config = config ?? Nova.instance.config {
     _apiService = apiService ?? NovaApiService(config: _config);
-    _theme = NovaTheme.fromThemeKeyOrHex(
-      _config.theme,
-      customPrimary: _config.primaryColor,
-      customSecondary: _config.secondaryColor,
-    );
+
+    if (Nova.isInitialized && Nova.instance.remoteConfig != null) {
+      _remoteConfig = Nova.instance.remoteConfig;
+      final primary = _remoteConfig!.primaryColor ?? _config.primaryColor;
+      final secondary = _remoteConfig!.secondaryColor ?? _config.secondaryColor;
+
+      if (primary != null && primary.isNotEmpty) {
+        _theme = NovaTheme.fromThemeKeyOrHex(
+          primary,
+          customPrimary: primary,
+          customSecondary: secondary,
+        );
+      } else {
+        _theme = NovaTheme.fromThemeKeyOrHex(
+          _config.theme,
+          customPrimary: _config.primaryColor,
+          customSecondary: _config.secondaryColor,
+        );
+      }
+    } else {
+      _theme = NovaTheme.fromThemeKeyOrHex(
+        _config.theme,
+        customPrimary: _config.primaryColor,
+        customSecondary: _config.secondaryColor,
+      );
+    }
   }
 
   /// Initializes the controller by fetching config and history from the admin backend.
