@@ -283,7 +283,10 @@ class _NovaChatViewState extends State<NovaChatView> {
         itemCount: msgs.length + (state.isTyping ? 1 : 0),
         itemBuilder: (context, index) {
           if (index < msgs.length) {
-            return _buildMessageBubble(msgs[index], theme);
+            return _AnimatedMessageBubble(
+              key: ValueKey(msgs[index].id),
+              child: _buildMessageBubble(msgs[index], theme),
+            );
           } else {
             return _buildTypingIndicator(theme);
           }
@@ -387,47 +390,54 @@ class _NovaChatViewState extends State<NovaChatView> {
   }
 
   Widget _buildTypingIndicator(NovaTheme theme) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [theme.gradientFrom, theme.gradientTo]),
-              shape: BoxShape.circle,
+    final agentName = _controller.remoteConfig?.agentName ??
+        Nova.instance.config.agentName ??
+        'Kockatoos Nova';
+
+    return _AnimatedMessageBubble(
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 16.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _PulsingAvatarRing(
+              theme: theme,
+              profilePicUrl: _controller.remoteConfig?.profilePicUrl,
             ),
-            child: const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: theme.botBubbleBg,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: 14,
-                  height: 14,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: theme.primary,
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: theme.botBubbleBg,
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(16),
+                  topRight: Radius.circular(16),
+                  bottomRight: Radius.circular(16),
+                  bottomLeft: Radius.circular(4),
+                ),
+                border: Border.all(color: Colors.grey.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.03),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
                   ),
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Typing...',
-                  style: TextStyle(fontSize: 12, color: Color(0xFF64748B)),
-                ),
-              ],
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$agentName is typing',
+                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF64748B)),
+                  ),
+                  const SizedBox(width: 8),
+                  _AnimatedBouncingDots(color: theme.primary),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -606,6 +616,224 @@ class _NovaChatViewState extends State<NovaChatView> {
           ],
         );
       },
+    );
+  }
+}
+
+class _AnimatedMessageBubble extends StatefulWidget {
+  final Widget child;
+  const _AnimatedMessageBubble({super.key, required this.child});
+
+  @override
+  State<_AnimatedMessageBubble> createState() => _AnimatedMessageBubbleState();
+}
+
+class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 240),
+    );
+
+    _fadeAnimation = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
+class _PulsingAvatarRing extends StatefulWidget {
+  final NovaTheme theme;
+  final String? profilePicUrl;
+
+  const _PulsingAvatarRing({
+    required this.theme,
+    this.profilePicUrl,
+  });
+
+  @override
+  State<_PulsingAvatarRing> createState() => _PulsingAvatarRingState();
+}
+
+class _PulsingAvatarRingState extends State<_PulsingAvatarRing> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _scaleAnimation;
+  late final Animation<double> _opacityAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.25).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+
+    _opacityAnimation = Tween<double>(begin: 0.4, end: 0.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    Widget avatarChild;
+    if (widget.profilePicUrl != null && widget.profilePicUrl!.trim().isNotEmpty) {
+      avatarChild = ClipOval(
+        child: Image.network(
+          widget.profilePicUrl!,
+          width: 32,
+          height: 32,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 18),
+        ),
+      );
+    } else {
+      avatarChild = const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 18);
+    }
+
+    return SizedBox(
+      width: 36,
+      height: 36,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AnimatedBuilder(
+            animation: _controller,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: _scaleAnimation.value,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: widget.theme.primary.withValues(alpha: _opacityAnimation.value),
+                  ),
+                ),
+              );
+            },
+          ),
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(colors: [widget.theme.gradientFrom, widget.theme.gradientTo]),
+              shape: BoxShape.circle,
+            ),
+            child: avatarChild,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _AnimatedBouncingDots extends StatefulWidget {
+  final Color color;
+  const _AnimatedBouncingDots({required this.color});
+
+  @override
+  State<_AnimatedBouncingDots> createState() => _AnimatedBouncingDotsState();
+}
+
+class _AnimatedBouncingDotsState extends State<_AnimatedBouncingDots> with TickerProviderStateMixin {
+  late final List<AnimationController> _controllers;
+  late final List<Animation<double>> _animations;
+
+  @override
+  void initState() {
+    super.initState();
+    _controllers = List.generate(3, (index) {
+      return AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 600),
+      );
+    });
+
+    _animations = _controllers.map((controller) {
+      return Tween<double>(begin: 0, end: -4).animate(
+        CurvedAnimation(
+          parent: controller,
+          curve: Curves.easeInOut,
+        ),
+      );
+    }).toList();
+
+    for (int i = 0; i < 3; i++) {
+      Future.delayed(Duration(milliseconds: i * 160), () {
+        if (mounted) {
+          _controllers[i].repeat(reverse: true);
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(3, (i) {
+        return AnimatedBuilder(
+          animation: _animations[i],
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(0, _animations[i].value),
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: widget.color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            );
+          },
+        );
+      }),
     );
   }
 }
