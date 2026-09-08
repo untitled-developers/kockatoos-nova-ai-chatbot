@@ -20,7 +20,11 @@ class _NovaFloatingButtonState extends State<NovaFloatingButton> with SingleTick
   late final AnimationController _pulseController;
   late final Animation<double> _pulseScaleAnimation;
   late final Animation<double> _pulseOpacityAnimation;
+  NovaChatController? _internalController;
   bool _isPressed = false;
+
+  NovaChatController get _effectiveController =>
+      widget.controller ?? (_internalController ??= NovaChatController(config: Nova.instance.config));
 
   @override
   void initState() {
@@ -42,12 +46,13 @@ class _NovaFloatingButtonState extends State<NovaFloatingButton> with SingleTick
   @override
   void dispose() {
     _pulseController.dispose();
+    _internalController?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final activeController = widget.controller ?? NovaChatController(config: Nova.instance.config);
+    final activeController = _effectiveController;
     final theme = activeController.theme;
 
     return AnimatedScale(

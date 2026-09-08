@@ -100,7 +100,10 @@ class NovaChatController extends ChangeNotifier {
   }
 
   /// Initializes the controller by fetching config and history from the admin backend.
-  Future<void> initialize() async {
+  Future<void> initialize({bool force = false}) async {
+    if (!force && _state is NovaChatLoaded) {
+      return;
+    }
     _setState(const NovaChatLoading());
 
     try {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
@@ -26,6 +27,7 @@ class _NovaChatViewState extends State<NovaChatView> {
   late final NovaChatController _controller;
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  Timer? _scrollTimer;
   bool _showScrollBottom = false;
 
   @override
@@ -36,14 +38,24 @@ class _NovaChatViewState extends State<NovaChatView> {
     _scrollController.addListener(_onScroll);
 
     if (_controller.state is NovaChatInitial) {
-      _controller.initialize();
+      _controller.initialize().then((_) {
+        _scrollToBottom(true);
+      });
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToBottom(true);
+      });
     }
   }
 
   void _onControllerUpdate() {
     if (mounted) {
       setState(() {});
-      _scrollToBottomIfNearEnd();
+      if (_controller.isStreaming || _controller.isTyping) {
+        _scrollToBottom(true);
+      } else {
+        _scrollToBottomIfNearEnd();
+      }
     }
   }
 
@@ -60,18 +72,33 @@ class _NovaChatViewState extends State<NovaChatView> {
   }
 
   void _scrollToBottom([bool force = false]) {
-    if (!_scrollController.hasClients) return;
-    if (force || !_showScrollBottom) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (_scrollController.hasClients) {
-          _scrollController.animateTo(
-            _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOut,
-          );
-        }
-      });
-    }
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      if (!force && _showScrollBottom) return;
+
+      void performScroll() {
+        if (!_scrollController.hasClients) return;
+        final maxScroll = _scrollController.position.maxScrollExtent;
+        _scrollController.animateTo(
+          maxScroll,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+        );
+
+        _scrollTimer?.cancel();
+        _scrollTimer = Timer(const Duration(milliseconds: 220), () {
+          if (mounted && _scrollController.hasClients) {
+            final newMax = _scrollController.position.maxScrollExtent;
+            if ((newMax - _scrollController.position.pixels).abs() > 4) {
+              _scrollController.jumpTo(newMax);
+            }
+          }
+        });
+      }
+
+      performScroll();
+    });
   }
 
   void _scrollToBottomIfNearEnd() {
@@ -85,6 +112,7 @@ class _NovaChatViewState extends State<NovaChatView> {
 
   @override
   void dispose() {
+    _scrollTimer?.cancel();
     _controller.removeListener(_onControllerUpdate);
     _textController.dispose();
     _scrollController.dispose();
@@ -358,6 +386,7 @@ class _NovaChatViewState extends State<NovaChatView> {
                       return InkWell(
                         onTap: () {
                           _controller.sendMessage(pill);
+                          _scrollToBottom(true);
                         },
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
@@ -491,6 +520,7 @@ class _NovaChatViewState extends State<NovaChatView> {
                         _textController.clear();
                         setState(() {});
                         _controller.sendMessage(text);
+                        _scrollToBottom(true);
                       }
                     : null,
               ),
