@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -166,7 +168,9 @@ class NovaChatController extends ChangeNotifier {
       final jsonStr = prefs.getString(key);
       if (jsonStr != null && jsonStr.isNotEmpty) {
         final List raw = jsonDecode(jsonStr) as List;
-        return raw.map((e) => NovaChatMessage.fromJson(e as Map<String, dynamic>)).toList();
+        return raw
+            .map((e) => NovaChatMessage.fromJson(e as Map<String, dynamic>))
+            .toList();
       }
     } catch (e) {
       if (_config.logLevel == NovaLogLevel.debug) {
@@ -181,9 +185,12 @@ class NovaChatController extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final key = 'nova_chat_history_${_config.apiKey}';
       // Cap local disk storage in SharedPreferences to last 30 messages (~20-30 KB) for 0ms startup
-      final capped = messages.length > 30 ? messages.sublist(messages.length - 30) : messages;
+      final capped = messages.length > 30
+          ? messages.sublist(messages.length - 30)
+          : messages;
       final jsonList = capped.map((m) => m.toJson()).toList();
       await prefs.setString(key, jsonEncode(jsonList));
+      log('Meesages:: ${capped.length}');
     } catch (e) {
       if (_config.logLevel == NovaLogLevel.debug) {
         debugPrint('[Nova SDK] Failed to save local chat history: $e');
@@ -218,7 +225,8 @@ class NovaChatController extends ChangeNotifier {
         _remoteConfig = await _apiService.fetchConfig(publicKey);
         if (_remoteConfig != null) {
           final primary = _remoteConfig!.primaryColor ?? _config.primaryColor;
-          final secondary = _remoteConfig!.secondaryColor ?? _config.secondaryColor;
+          final secondary =
+              _remoteConfig!.secondaryColor ?? _config.secondaryColor;
 
           if (primary != null && primary.isNotEmpty) {
             _theme = NovaTheme.fromThemeKeyOrHex(
@@ -261,9 +269,11 @@ class NovaChatController extends ChangeNotifier {
             _sessionToken = token;
           } catch (e) {
             final errorStr = e.toString();
-            if (errorStr.contains('HTTP 401') || errorStr.contains('HTTP 404')) {
+            if (errorStr.contains('HTTP 401') ||
+                errorStr.contains('HTTP 404')) {
               if (_config.logLevel == NovaLogLevel.debug) {
-                debugPrint('[Nova SDK] Saved session token invalid or expired: $e');
+                debugPrint(
+                    '[Nova SDK] Saved session token invalid or expired: $e');
               }
               await _clearSavedSessionToken();
               token = null;
@@ -323,7 +333,8 @@ class NovaChatController extends ChangeNotifier {
       id: 'init-1',
       sender: NovaMessageSender.bot,
       text: greetingText,
-      timestamp: _formatTime(DateTime.now().subtract(const Duration(minutes: 1))),
+      timestamp:
+          _formatTime(DateTime.now().subtract(const Duration(minutes: 1))),
       pills: pills,
     );
   }
@@ -369,7 +380,8 @@ class NovaChatController extends ChangeNotifier {
       bool hasStreamed = false;
 
       Future<void> consumeStream(String activeToken) async {
-        final stream = _apiService.sendMessageStream(token: activeToken, message: trimmed);
+        final stream =
+            _apiService.sendMessageStream(token: activeToken, message: trimmed);
         await for (final delta in stream) {
           final current = botMsg;
           if (current == null) {
@@ -425,7 +437,8 @@ class NovaChatController extends ChangeNotifier {
         ));
       }
     } catch (e) {
-      if (_config.logLevel == NovaLogLevel.debug || _config.logLevel == NovaLogLevel.error) {
+      if (_config.logLevel == NovaLogLevel.debug ||
+          _config.logLevel == NovaLogLevel.error) {
         debugPrint('[Nova SDK] Network error during sendMessageStream: $e');
       }
 
@@ -449,29 +462,44 @@ class NovaChatController extends ChangeNotifier {
     }
   }
 
-  ({String text, List<String> pills}) _generateSmartFallbackReply(String userPrompt) {
+  ({String text, List<String> pills}) _generateSmartFallbackReply(
+      String userPrompt) {
     final lower = userPrompt.toLowerCase();
-    if (lower.contains('color') || lower.contains('theme') || lower.contains('admin')) {
+    if (lower.contains('color') ||
+        lower.contains('theme') ||
+        lower.contains('admin')) {
       return (
-        text: "🎨 **Dynamic Admin Colors & Configuration**:\n\nThe SDK automatically fetches dynamic primary and secondary colors configured in your Kockatoos Admin Panel (`/api/widget/config`).\n\nYou can also override colors locally:\n`NovaConfig(theme: 'emerald')` or `primaryColor: '#059669'`.",
+        text:
+            "🎨 **Dynamic Admin Colors & Configuration**:\n\nThe SDK automatically fetches dynamic primary and secondary colors configured in your Kockatoos Admin Panel (`/api/widget/config`).\n\nYou can also override colors locally:\n`NovaConfig(theme: 'emerald')` or `primaryColor: '#059669'`.",
         pills: ["Test Emerald Theme", "Test Ocean Theme", "Test Violet Theme"]
       );
     }
     if (lower.contains('emerald')) {
       setTheme(NovaTheme.fromThemeKeyOrHex('emerald'));
-      return (text: "✨ Switched to **Emerald & Teal** theme!", pills: ["Test Ocean Theme", "Reset Theme"]);
+      return (
+        text: "✨ Switched to **Emerald & Teal** theme!",
+        pills: ["Test Ocean Theme", "Reset Theme"]
+      );
     }
     if (lower.contains('ocean')) {
       setTheme(NovaTheme.fromThemeKeyOrHex('ocean'));
-      return (text: "🌊 Switched to **Royal Ocean & Cyan** theme!", pills: ["Test Rose Theme", "Reset Theme"]);
+      return (
+        text: "🌊 Switched to **Royal Ocean & Cyan** theme!",
+        pills: ["Test Rose Theme", "Reset Theme"]
+      );
     }
     if (lower.contains('reset')) {
-      setTheme(NovaTheme.fromThemeKeyOrHex(_config.theme, customPrimary: _remoteConfig?.primaryColor));
-      return (text: "💎 Restored original theme!", pills: ["Product Features", "Pricing details"]);
+      setTheme(NovaTheme.fromThemeKeyOrHex(_config.theme,
+          customPrimary: _remoteConfig?.primaryColor));
+      return (
+        text: "💎 Restored original theme!",
+        pills: ["Product Features", "Pricing details"]
+      );
     }
 
     return (
-      text: "Thanks for your inquiry! I'm processing your request regarding \"$userPrompt\".\n\n*(Note: If testing against a local backend server, verify `baseUrl` points to your backend instance e.g. `http://10.0.2.2:8000` or `http://localhost:8000`)*",
+      text:
+          "Thanks for your inquiry! I'm processing your request regarding \"$userPrompt\".\n\n*(Note: If testing against a local backend server, verify `baseUrl` points to your backend instance e.g. `http://10.0.2.2:8000` or `http://localhost:8000`)*",
       pills: ["Tell me about features", "How to set colors?", "Contact support"]
     );
   }

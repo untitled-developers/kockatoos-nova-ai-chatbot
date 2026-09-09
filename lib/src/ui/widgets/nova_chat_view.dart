@@ -54,25 +54,13 @@ class _NovaChatViewState extends State<NovaChatView> {
     _scrollController.addListener(_onScroll);
 
     if (_controller.state is NovaChatInitial) {
-      _controller.initialize().then((_) {
-        _hasInitiallyJumpedToBottom = true;
-        _jumpToBottomInstant();
-      });
-    } else {
-      _hasInitiallyJumpedToBottom = true;
-      _jumpToBottomInstant();
+      _controller.initialize();
     }
   }
 
   void _onControllerUpdate() {
     if (!mounted) return;
     setState(() {});
-
-    if (!_hasInitiallyJumpedToBottom && _controller.state is NovaChatLoaded) {
-      _hasInitiallyJumpedToBottom = true;
-      _jumpToBottomInstant();
-      return;
-    }
 
     if (_controller.isStreaming || _controller.isTyping) {
       _scrollToBottomSmooth();
@@ -83,9 +71,8 @@ class _NovaChatViewState extends State<NovaChatView> {
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.position.pixels;
-    final shouldShow = (maxScroll - currentScroll) > 120;
+    final shouldShow = currentScroll > 120;
     if (shouldShow != _showScrollBottom) {
       setState(() {
         _showScrollBottom = shouldShow;
@@ -95,18 +82,8 @@ class _NovaChatViewState extends State<NovaChatView> {
 
   void _jumpToBottomInstant() {
     if (!mounted) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-      final maxScroll = _scrollController.position.maxScrollExtent;
-      _scrollController.jumpTo(maxScroll);
-
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _scrollController.hasClients) {
-          final newMax = _scrollController.position.maxScrollExtent;
-          _scrollController.jumpTo(newMax);
-        }
-      });
-    });
+    if (!_scrollController.hasClients) return;
+    _scrollController.jumpTo(0.0);
   }
 
   void _scrollToBottomSmooth() {
@@ -115,9 +92,8 @@ class _NovaChatViewState extends State<NovaChatView> {
       if (!_scrollController.hasClients) return;
       if (_showScrollBottom) return;
 
-      final maxScroll = _scrollController.position.maxScrollExtent;
       _scrollController.animateTo(
-        maxScroll,
+        0.0,
         duration: const Duration(milliseconds: 180),
         curve: Curves.easeOut,
       );
@@ -125,18 +101,22 @@ class _NovaChatViewState extends State<NovaChatView> {
   }
 
   void _scrollToBottom([bool force = false]) {
-    if (force || !_hasInitiallyJumpedToBottom) {
-      _jumpToBottomInstant();
+    if (!_scrollController.hasClients) return;
+    if (force) {
+      _scrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
     } else {
       _scrollToBottomSmooth();
     }
   }
 
   void _scrollToBottomIfNearEnd() {
-    if (!_scrollController.hasClients || !_hasInitiallyJumpedToBottom) return;
-    final maxScroll = _scrollController.position.maxScrollExtent;
+    if (!_scrollController.hasClients) return;
     final currentScroll = _scrollController.position.pixels;
-    if ((maxScroll - currentScroll) < 60) {
+    if (currentScroll < 60) {
       _scrollToBottomSmooth();
     }
   }
@@ -349,21 +329,34 @@ class _NovaChatViewState extends State<NovaChatView> {
         _initialMessageCount = msgs.length;
       }
 
+      final totalCount = msgs.length + (state.isTyping ? 1 : 0);
+
       return ListView.builder(
         controller: _scrollController,
+        reverse: true,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        itemCount: msgs.length + (state.isTyping ? 1 : 0),
+        itemCount: totalCount,
         itemBuilder: (context, index) {
-          if (index < msgs.length) {
-            final shouldAnimate = _initialMessageCount >= 0 && index >= _initialMessageCount;
-            return _AnimatedMessageBubble(
-              key: ValueKey(msgs[index].id),
-              animate: shouldAnimate,
-              child: _buildMessageBubble(msgs[index], theme),
-            );
-          } else {
+          if (state.isTyping && index == 0) {
             return _buildTypingIndicator(theme);
           }
+
+          final msgIndex = state.isTyping
+              ? msgs.length - index
+              : msgs.length - 1 - index;
+
+          if (msgIndex >= 0 && msgIndex < msgs.length) {
+            final message = msgs[msgIndex];
+            final shouldAnimate =
+                _initialMessageCount >= 0 && msgIndex >= _initialMessageCount;
+            return _AnimatedMessageBubble(
+              key: ValueKey(message.id),
+              animate: shouldAnimate,
+              child: _buildMessageBubble(message, theme),
+            );
+          }
+
+          return const SizedBox.shrink();
         },
       );
     }
@@ -528,10 +521,22 @@ class _NovaChatViewState extends State<NovaChatView> {
   }
 
   Widget _buildInputBar(NovaTheme theme) {
-    final isEnabled = _controller.remoteConfig?.isEnabled ?? true;
+    final state = _controller.state;
+    final isLoading = state is NovaChatLoading || state is NovaChatInitial;
+    final isConfigEnabled = _controller.remoteConfig?.isEnabled ?? true;
+    final isEnabled = isConfigEnabled && !isLoading;
     final allowEmojis = _controller.remoteConfig?.allowEmojis ?? true;
     final isBusy = _controller.isStreaming || _controller.isTyping;
     final hasText = _textController.text.trim().isNotEmpty;
+
+    String hintText;
+    if (isLoading) {
+      hintText = 'Loading conversation...';
+    } else if (!isConfigEnabled) {
+      hintText = 'Chatbot is currently disabled by admin.';
+    } else {
+      hintText = 'Ask a question...';
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -558,9 +563,7 @@ class _NovaChatViewState extends State<NovaChatView> {
                   maxLines: 4,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    hintText: isEnabled
-                        ? 'Ask a question...'
-                        : 'Chatbot is currently disabled by admin.',
+                    hintText: hintText,
                     hintStyle:
                         const TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
                     border: InputBorder.none,

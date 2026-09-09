@@ -82,7 +82,7 @@ class _NovaFloatingButtonState extends State<NovaFloatingButton> with SingleTick
           showModalBottomSheet(
             context: context,
             isScrollControlled: true,
-            useSafeArea: true,
+            useSafeArea: false,
             backgroundColor: Colors.transparent,
             builder: (context) {
               return FractionallySizedBox(
