@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kockatoos_nova_ai_chatbot/kockatoos_nova_ai_chatbot.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
   tearDown(() {
     Nova.reset();
@@ -102,6 +107,19 @@ void main() {
       controller.setTheme(emerald);
       expect(controller.theme.name, 'Emerald & Teal');
     });
+
+    test('persists and reloads visitor session token across launches', () async {
+      const config = NovaConfig(apiKey: 'persist_key');
+      await Nova.initialize(config: config);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('nova_session_token_persist_key', 'existing_token_xyz');
+
+      final controller = NovaChatController();
+      await controller.initialize();
+
+      expect(controller.sessionToken, 'existing_token_xyz');
+    });
   });
 
   group('UI Widgets', () {
@@ -140,7 +158,8 @@ void main() {
         ),
       );
 
-      await tester.pumpAndSettle();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.byType(NovaChatView), findsOneWidget);
       expect(find.byType(TextField), findsOneWidget);

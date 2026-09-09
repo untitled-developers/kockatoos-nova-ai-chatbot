@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/kockatoos_nova_ai_chatbot_config.dart';
 import '../../core/kockatoos_nova_ai_chatbot_client.dart';
@@ -120,6 +122,87 @@ class NovaChatController extends ChangeNotifier {
     }
   }
 
+  Future<String?> _loadSavedSessionToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'nova_session_token_${_config.apiKey}';
+      return prefs.getString(key);
+    } catch (e) {
+      if (_config.logLevel == NovaLogLevel.debug) {
+        debugPrint('[Nova SDK] Failed to load saved session token: $e');
+      }
+      return null;
+    }
+  }
+
+  Future<void> _saveSessionToken(String token) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'nova_session_token_${_config.apiKey}';
+      await prefs.setString(key, token);
+    } catch (e) {
+      if (_config.logLevel == NovaLogLevel.debug) {
+        debugPrint('[Nova SDK] Failed to save session token: $e');
+      }
+    }
+  }
+
+  Future<void> _clearSavedSessionToken() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'nova_session_token_${_config.apiKey}';
+      await prefs.remove(key);
+    } catch (e) {
+      if (_config.logLevel == NovaLogLevel.debug) {
+        debugPrint('[Nova SDK] Failed to clear session token: $e');
+      }
+    }
+  }
+
+  Future<List<NovaChatMessage>?> _loadLocalMessages() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'nova_chat_history_${_config.apiKey}';
+      final jsonStr = prefs.getString(key);
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final List raw = jsonDecode(jsonStr) as List;
+        return raw.map((e) => NovaChatMessage.fromJson(e as Map<String, dynamic>)).toList();
+      }
+    } catch (e) {
+      if (_config.logLevel == NovaLogLevel.debug) {
+        debugPrint('[Nova SDK] Failed to load local chat history: $e');
+      }
+    }
+    return null;
+  }
+
+  Future<void> _saveLocalMessages(List<NovaChatMessage> messages) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'nova_chat_history_${_config.apiKey}';
+      // Cap local disk storage in SharedPreferences to last 30 messages (~20-30 KB) for 0ms startup
+      final capped = messages.length > 30 ? messages.sublist(messages.length - 30) : messages;
+      final jsonList = capped.map((m) => m.toJson()).toList();
+      await prefs.setString(key, jsonEncode(jsonList));
+    } catch (e) {
+      if (_config.logLevel == NovaLogLevel.debug) {
+        debugPrint('[Nova SDK] Failed to save local chat history: $e');
+      }
+    }
+  }
+
+  Future<void> _clearLocalMessages() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'nova_chat_history_${_config.apiKey}';
+      await prefs.remove(key);
+    } catch (e) {
+      if (_config.logLevel == NovaLogLevel.debug) {
+        debugPrint('[Nova SDK] Failed to clear local chat history: $e');
+      }
+    }
+  }
+
   /// Initializes the controller by fetching config and history from the admin backend.
   Future<void> initialize({bool force = false}) async {
     if (!force && _state is NovaChatLoaded) {
@@ -151,24 +234,66 @@ class NovaChatController extends ChangeNotifier {
         }
       }
 
-      // 2. Fetch visitor session token & history
+      // 2. Load cached local messages first for instant 0ms rendering
+      final localMsgs = await _loadLocalMessages();
+      if (localMsgs != null && localMsgs.isNotEmpty) {
+        _messages = localMsgs;
+      } else {
+        _messages = [getStarterGreetingMessage()];
+      }
+
+      // Emit loaded state immediately with local cache so UI renders with 0ms delay
+      _setState(NovaChatLoaded(
+        messages: List.of(_messages),
+        isTyping: false,
+        isStreaming: false,
+        remoteConfig: _remoteConfig,
+      ));
+
+      // 3. Fetch visitor session token & full history from backend server
       try {
-        _sessionToken = await _apiService.fetchSessionToken(publicKey);
-        final history = await _apiService.fetchMessages(_sessionToken!);
-        if (history.isNotEmpty) {
-          _messages = [getStarterGreetingMessage(), ...history];
-        } else {
-          _messages = [getStarterGreetingMessage()];
+        String? token = await _loadSavedSessionToken();
+        List<NovaChatMessage> remoteHistory = [];
+
+        if (token != null && token.isNotEmpty) {
+          try {
+            remoteHistory = await _apiService.fetchMessages(token);
+            _sessionToken = token;
+          } catch (e) {
+            final errorStr = e.toString();
+            if (errorStr.contains('HTTP 401') || errorStr.contains('HTTP 404')) {
+              if (_config.logLevel == NovaLogLevel.debug) {
+                debugPrint('[Nova SDK] Saved session token invalid or expired: $e');
+              }
+              await _clearSavedSessionToken();
+              token = null;
+            } else {
+              // Network error or offline: retain saved token
+              _sessionToken = token;
+            }
+          }
+        }
+
+        if (token == null || token.isEmpty) {
+          _sessionToken = await _apiService.fetchSessionToken(publicKey);
+          await _saveSessionToken(_sessionToken!);
+          try {
+            remoteHistory = await _apiService.fetchMessages(_sessionToken!);
+          } catch (_) {}
+        }
+
+        if (remoteHistory.isNotEmpty) {
+          _messages = [getStarterGreetingMessage(), ...remoteHistory];
+          await _saveLocalMessages(_messages);
         }
       } catch (e) {
         if (_config.logLevel == NovaLogLevel.debug) {
           debugPrint('[Nova SDK] Visitor session token fetch error: $e');
         }
-        _messages = [getStarterGreetingMessage()];
       }
 
       _setState(NovaChatLoaded(
-        messages: _messages,
+        messages: List.of(_messages),
         isTyping: false,
         isStreaming: false,
         remoteConfig: _remoteConfig,
@@ -227,7 +352,11 @@ class NovaChatController extends ChangeNotifier {
     // Ensure session token is resolved
     if (_sessionToken == null || _sessionToken!.isEmpty) {
       try {
-        _sessionToken = await _apiService.fetchSessionToken(publicKey);
+        _sessionToken = await _loadSavedSessionToken();
+        if (_sessionToken == null || _sessionToken!.isEmpty) {
+          _sessionToken = await _apiService.fetchSessionToken(publicKey);
+          await _saveSessionToken(_sessionToken!);
+        }
       } catch (e) {
         if (_config.logLevel == NovaLogLevel.debug) {
           debugPrint('[Nova SDK] Session token retry failed: $e');
@@ -274,6 +403,7 @@ class NovaChatController extends ChangeNotifier {
       } catch (e) {
         if (!hasStreamed && e.toString().contains('401_UNAUTHORIZED')) {
           _sessionToken = await _apiService.fetchSessionToken(publicKey);
+          await _saveSessionToken(_sessionToken!);
           await consumeStream(_sessionToken!);
         } else {
           rethrow;
@@ -363,7 +493,23 @@ class NovaChatController extends ChangeNotifier {
     _isStreaming = false;
 
     if (_sessionToken != null) {
-      await _apiService.closeConversation(_sessionToken!);
+      try {
+        await _apiService.closeConversation(_sessionToken!);
+      } catch (_) {}
+    }
+
+    await _clearSavedSessionToken();
+    await _clearLocalMessages();
+    _sessionToken = null;
+
+    try {
+      final publicKey = await _config.getAuthToken();
+      _sessionToken = await _apiService.fetchSessionToken(publicKey);
+      await _saveSessionToken(_sessionToken!);
+    } catch (e) {
+      if (_config.logLevel == NovaLogLevel.debug) {
+        debugPrint('[Nova SDK] Reset session token error: $e');
+      }
     }
 
     _messages = [getStarterGreetingMessage()];
@@ -381,6 +527,7 @@ class NovaChatController extends ChangeNotifier {
   }
 
   void _notifyLoadedState() {
+    _saveLocalMessages(_messages);
     _setState(NovaChatLoaded(
       messages: List.of(_messages),
       isTyping: _isTyping,

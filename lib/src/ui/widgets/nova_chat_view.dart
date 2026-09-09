@@ -33,6 +33,9 @@ class _NovaChatViewState extends State<NovaChatView> {
   Timer? _scrollTimer;
   bool _showScrollBottom = false;
 
+  int _initialMessageCount = -1;
+  bool _hasInitiallyJumpedToBottom = false;
+
   @override
   void initState() {
     super.initState();
@@ -52,23 +55,29 @@ class _NovaChatViewState extends State<NovaChatView> {
 
     if (_controller.state is NovaChatInitial) {
       _controller.initialize().then((_) {
-        _scrollToBottom(true);
+        _hasInitiallyJumpedToBottom = true;
+        _jumpToBottomInstant();
       });
     } else {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _scrollToBottom(true);
-      });
+      _hasInitiallyJumpedToBottom = true;
+      _jumpToBottomInstant();
     }
   }
 
   void _onControllerUpdate() {
-    if (mounted) {
-      setState(() {});
-      if (_controller.isStreaming || _controller.isTyping) {
-        _scrollToBottom(true);
-      } else {
-        _scrollToBottomIfNearEnd();
-      }
+    if (!mounted) return;
+    setState(() {});
+
+    if (!_hasInitiallyJumpedToBottom && _controller.state is NovaChatLoaded) {
+      _hasInitiallyJumpedToBottom = true;
+      _jumpToBottomInstant();
+      return;
+    }
+
+    if (_controller.isStreaming || _controller.isTyping) {
+      _scrollToBottomSmooth();
+    } else {
+      _scrollToBottomIfNearEnd();
     }
   }
 
@@ -84,42 +93,51 @@ class _NovaChatViewState extends State<NovaChatView> {
     }
   }
 
-  void _scrollToBottom([bool force = false]) {
+  void _jumpToBottomInstant() {
     if (!mounted) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_scrollController.hasClients) return;
-      if (!force && _showScrollBottom) return;
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      _scrollController.jumpTo(maxScroll);
 
-      void performScroll() {
-        if (!_scrollController.hasClients) return;
-        final maxScroll = _scrollController.position.maxScrollExtent;
-        _scrollController.animateTo(
-          maxScroll,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-        );
-
-        _scrollTimer?.cancel();
-        _scrollTimer = Timer(const Duration(milliseconds: 220), () {
-          if (mounted && _scrollController.hasClients) {
-            final newMax = _scrollController.position.maxScrollExtent;
-            if ((newMax - _scrollController.position.pixels).abs() > 4) {
-              _scrollController.jumpTo(newMax);
-            }
-          }
-        });
-      }
-
-      performScroll();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _scrollController.hasClients) {
+          final newMax = _scrollController.position.maxScrollExtent;
+          _scrollController.jumpTo(newMax);
+        }
+      });
     });
   }
 
+  void _scrollToBottomSmooth() {
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      if (_showScrollBottom) return;
+
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      _scrollController.animateTo(
+        maxScroll,
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  void _scrollToBottom([bool force = false]) {
+    if (force || !_hasInitiallyJumpedToBottom) {
+      _jumpToBottomInstant();
+    } else {
+      _scrollToBottomSmooth();
+    }
+  }
+
   void _scrollToBottomIfNearEnd() {
-    if (!_scrollController.hasClients) return;
+    if (!_scrollController.hasClients || !_hasInitiallyJumpedToBottom) return;
     final maxScroll = _scrollController.position.maxScrollExtent;
     final currentScroll = _scrollController.position.pixels;
-    if ((maxScroll - currentScroll) < 150) {
-      _scrollToBottom();
+    if ((maxScroll - currentScroll) < 60) {
+      _scrollToBottomSmooth();
     }
   }
 
@@ -327,14 +345,20 @@ class _NovaChatViewState extends State<NovaChatView> {
 
     if (state is NovaChatLoaded) {
       final msgs = state.messages;
+      if (_initialMessageCount < 0 && msgs.isNotEmpty) {
+        _initialMessageCount = msgs.length;
+      }
+
       return ListView.builder(
         controller: _scrollController,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         itemCount: msgs.length + (state.isTyping ? 1 : 0),
         itemBuilder: (context, index) {
           if (index < msgs.length) {
+            final shouldAnimate = _initialMessageCount >= 0 && index >= _initialMessageCount;
             return _AnimatedMessageBubble(
               key: ValueKey(msgs[index].id),
+              animate: shouldAnimate,
               child: _buildMessageBubble(msgs[index], theme),
             );
           } else {
@@ -706,7 +730,10 @@ class _NovaChatViewState extends State<NovaChatView> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: _controller.theme.primary),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
@@ -727,7 +754,12 @@ class _NovaChatViewState extends State<NovaChatView> {
 
 class _AnimatedMessageBubble extends StatefulWidget {
   final Widget child;
-  const _AnimatedMessageBubble({super.key, required this.child});
+  final bool animate;
+  const _AnimatedMessageBubble({
+    super.key,
+    required this.child,
+    this.animate = true,
+  });
 
   @override
   State<_AnimatedMessageBubble> createState() => _AnimatedMessageBubbleState();
@@ -754,7 +786,11 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
-    _controller.forward();
+    if (widget.animate) {
+      _controller.forward();
+    } else {
+      _controller.value = 1.0;
+    }
   }
 
   @override
@@ -765,6 +801,10 @@ class _AnimatedMessageBubbleState extends State<_AnimatedMessageBubble>
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.animate) {
+      return widget.child;
+    }
+
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SlideTransition(

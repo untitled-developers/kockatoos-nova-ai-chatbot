@@ -124,7 +124,7 @@ class NovaApiService {
     }
 
     if (response.statusCode != 200) {
-      return [];
+      throw Exception('Failed to fetch messages (HTTP ${response.statusCode}): ${response.body}');
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
