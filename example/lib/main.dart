@@ -12,11 +12,12 @@ void main() async {
   const String liveBackendUrl = 'http://10.0.2.2:8000';
   const String workspacePublicKey = 'kc_3XA9M9ccS3iy3Et8b8TJ6vltrRmlYOxA';
 
-  // Initialize Nova SDK with Live Backend Server & Admin Panel Config
+  // Initialize Nova SDK with Live Backend Server, Mobile Origins & Admin Panel Config
   await Nova.initialize(
     config: const NovaConfig(
       apiKey: workspacePublicKey,
       baseUrl: liveBackendUrl,
+      androidSha256Hash: 'com.kockatoos.co',
       logLevel: NovaLogLevel.debug,
     ),
   );

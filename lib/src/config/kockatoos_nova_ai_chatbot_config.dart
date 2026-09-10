@@ -19,12 +19,16 @@ class NovaConfig {
   final List<String>? suggestedMessages;
   final bool allowEmojis;
   final String? origin;
+  final String? androidSha256Hash;
+  final String? iosPackageName;
 
   const NovaConfig({
     this.apiKey,
     this.tokenResolver,
     this.baseUrl = 'http://10.0.2.2:8000',
     this.origin,
+    this.androidSha256Hash,
+    this.iosPackageName,
     this.logLevel = kReleaseMode ? NovaLogLevel.none : NovaLogLevel.error,
     this.timeout = const Duration(seconds: 15),
     this.theme = 'indigo',
@@ -44,6 +48,26 @@ class NovaConfig {
       return await tokenResolver!();
     }
     return apiKey!;
+  }
+
+  Map<String, String>? get mobileOriginParams {
+    if (defaultTargetPlatform == TargetPlatform.android &&
+        androidSha256Hash != null &&
+        androidSha256Hash!.trim().isNotEmpty) {
+      return {'type': 'android', 'value': androidSha256Hash!.trim()};
+    }
+    if (defaultTargetPlatform == TargetPlatform.iOS &&
+        iosPackageName != null &&
+        iosPackageName!.trim().isNotEmpty) {
+      return {'type': 'ios', 'value': iosPackageName!.trim()};
+    }
+    if (androidSha256Hash != null && androidSha256Hash!.trim().isNotEmpty) {
+      return {'type': 'android', 'value': androidSha256Hash!.trim()};
+    }
+    if (iosPackageName != null && iosPackageName!.trim().isNotEmpty) {
+      return {'type': 'ios', 'value': iosPackageName!.trim()};
+    }
+    return null;
   }
 
   String? get resolvedOrigin {

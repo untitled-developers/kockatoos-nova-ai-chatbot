@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -80,6 +79,9 @@ class NovaChatController extends ChangeNotifier {
   bool _drawerOpen = false;
   bool get drawerOpen => _drawerOpen;
 
+  bool _isAllowed = true;
+  bool get isAllowed => _isAllowed;
+
   List<NovaChatMessage> _messages = [];
   List<NovaChatMessage> get messages => List.unmodifiable(_messages);
 
@@ -97,8 +99,15 @@ class NovaChatController extends ChangeNotifier {
   }) : _config = config ?? Nova.instance.config {
     _apiService = apiService ?? NovaApiService(config: _config);
 
+    if (Nova.isInitialized) {
+      _isAllowed = Nova.instance.isAllowed;
+    }
+
     if (Nova.isInitialized && Nova.instance.remoteConfig != null) {
       _remoteConfig = Nova.instance.remoteConfig;
+      if (_remoteConfig != null) {
+        _isAllowed = _remoteConfig!.isEnabled;
+      }
       final primary = _remoteConfig!.primaryColor ?? _config.primaryColor;
       final secondary = _remoteConfig!.secondaryColor ?? _config.secondaryColor;
 
@@ -168,9 +177,14 @@ class NovaChatController extends ChangeNotifier {
       final jsonStr = prefs.getString(key);
       if (jsonStr != null && jsonStr.isNotEmpty) {
         final List raw = jsonDecode(jsonStr) as List;
-        return raw
+        final list = raw
             .map((e) => NovaChatMessage.fromJson(e as Map<String, dynamic>))
             .toList();
+        if (_config.logLevel == NovaLogLevel.debug) {
+          debugPrint(
+              '[Nova SDK] Loaded ${list.length} cached messages from SharedPreferences.');
+        }
+        return list;
       }
     } catch (e) {
       if (_config.logLevel == NovaLogLevel.debug) {
@@ -190,7 +204,10 @@ class NovaChatController extends ChangeNotifier {
           : messages;
       final jsonList = capped.map((m) => m.toJson()).toList();
       await prefs.setString(key, jsonEncode(jsonList));
-      log('Meesages:: ${capped.length}');
+      if (_config.logLevel == NovaLogLevel.debug) {
+        debugPrint(
+            '[Nova SDK] Saved ${capped.length} messages to SharedPreferences (total in-memory: ${messages.length}).');
+      }
     } catch (e) {
       if (_config.logLevel == NovaLogLevel.debug) {
         debugPrint('[Nova SDK] Failed to save local chat history: $e');
@@ -203,6 +220,9 @@ class NovaChatController extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final key = 'nova_chat_history_${_config.apiKey}';
       await prefs.remove(key);
+      if (_config.logLevel == NovaLogLevel.debug) {
+        debugPrint('[Nova SDK] Cleared local chat history from SharedPreferences.');
+      }
     } catch (e) {
       if (_config.logLevel == NovaLogLevel.debug) {
         debugPrint('[Nova SDK] Failed to clear local chat history: $e');
@@ -224,6 +244,7 @@ class NovaChatController extends ChangeNotifier {
       try {
         _remoteConfig = await _apiService.fetchConfig(publicKey);
         if (_remoteConfig != null) {
+          _isAllowed = _remoteConfig!.isEnabled;
           final primary = _remoteConfig!.primaryColor ?? _config.primaryColor;
           final secondary =
               _remoteConfig!.secondaryColor ?? _config.secondaryColor;
@@ -237,6 +258,13 @@ class NovaChatController extends ChangeNotifier {
           }
         }
       } catch (e) {
+        final errStr = e.toString();
+        if (errStr.contains('403') ||
+            errStr.contains('401') ||
+            errStr.contains('Forbidden') ||
+            errStr.contains('Unauthorized')) {
+          _isAllowed = false;
+        }
         if (_config.logLevel == NovaLogLevel.debug) {
           debugPrint('[Nova SDK] Admin config fetch error: $e');
         }
@@ -293,6 +321,10 @@ class NovaChatController extends ChangeNotifier {
         }
 
         if (remoteHistory.isNotEmpty) {
+          if (_config.logLevel == NovaLogLevel.debug) {
+            debugPrint(
+                '[Nova SDK] Fetched ${remoteHistory.length} remote messages from server API.');
+          }
           _messages = [getStarterGreetingMessage(), ...remoteHistory];
           await _saveLocalMessages(_messages);
         }

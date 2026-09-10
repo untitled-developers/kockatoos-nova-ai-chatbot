@@ -56,7 +56,15 @@ class _NovaFloatingButtonState extends State<NovaFloatingButton> with SingleTick
 
   @override
   Widget build(BuildContext context) {
+    if (Nova.isInitialized && !Nova.instance.isAllowed) {
+      return const SizedBox.shrink();
+    }
+
     final activeController = _effectiveController;
+    if (activeController != null && !activeController.isAllowed) {
+      return const SizedBox.shrink();
+    }
+
     final theme = activeController?.theme ?? NovaTheme.defaultKockatoos;
 
     return AnimatedScale(

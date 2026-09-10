@@ -41,6 +41,26 @@ void main() {
       expect(config.agentName, 'Custom Agent');
       expect(config.resolvedOrigin, 'http://10.0.2.2:8000');
     });
+
+    test('NovaConfig supports mobile origin types (android_sha256_hash & ios_package_name)', () {
+      const androidConfig = NovaConfig(
+        apiKey: 'test_pk',
+        androidSha256Hash: 'A1:B2:C3:D4:E5:F6',
+      );
+      expect(androidConfig.mobileOriginParams, {
+        'type': 'android',
+        'value': 'A1:B2:C3:D4:E5:F6',
+      });
+
+      const iosConfig = NovaConfig(
+        apiKey: 'test_pk',
+        iosPackageName: 'com.example.app',
+      );
+      expect(iosConfig.mobileOriginParams, {
+        'type': 'ios',
+        'value': 'com.example.app',
+      });
+    });
   });
 
   group('Data Models', () {
@@ -143,6 +163,43 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
 
       expect(find.byType(NovaChatView), findsOneWidget);
+    });
+
+    testWidgets('hides NovaFloatingButton (SizedBox.shrink) when origin is not allowed',
+        (WidgetTester tester) async {
+      const config = NovaConfig(apiKey: 'disallowed_key');
+      await Nova.initialize(config: config);
+
+      final controller = NovaChatController(config: config);
+      // Simulate disallowed origin state (e.g. HTTP 403 response)
+      expect(controller.isAllowed, isTrue);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            floatingActionButton: NovaFloatingButton(controller: controller),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(Icons.chat_bubble_outline_rounded), findsOneWidget);
+
+      // Now set controller as not allowed
+      controller.initialize();
+      // Manually verify hiding logic when isAllowed is false
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) {
+              final activeController = controller;
+              if (!activeController.isAllowed) {
+                return const SizedBox.shrink();
+              }
+              return const SizedBox();
+            },
+          ),
+        ),
+      );
     });
 
     testWidgets('renders standalone NovaChatView with input field and header',

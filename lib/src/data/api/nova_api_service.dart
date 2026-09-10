@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:developer';
+
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
@@ -44,12 +46,14 @@ class NovaApiService {
       }
     }
 
-    final cleanEndpoint = endpointPath.startsWith('/') ? endpointPath : '/$endpointPath';
+    final cleanEndpoint =
+        endpointPath.startsWith('/') ? endpointPath : '/$endpointPath';
     var urlString = '$base$cleanEndpoint';
 
     if (queryParams != null && queryParams.isNotEmpty) {
       final query = queryParams.entries
-          .map((e) => '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
+          .map((e) =>
+              '${Uri.encodeComponent(e.key)}=${Uri.encodeComponent(e.value)}')
           .join('&');
       urlString += '?$query';
     }
@@ -63,15 +67,25 @@ class NovaApiService {
 
   /// Fetches remote widget configuration using the public key.
   Future<NovaWidgetConfig> fetchConfig(String publicKey) async {
-    final uri = _buildUri('/api/widget/config', {'key': publicKey});
-    final response = await _client.get(uri, headers: _buildHeaders()).timeout(_config.timeout);
+    final queryParams = <String, String>{'key': publicKey};
+    final mobileOrigin = _config.mobileOriginParams;
+    if (mobileOrigin != null) {
+      queryParams.addAll(mobileOrigin);
+    }
+    final uri = _buildUri('/api/widget/config', queryParams);
+    log('queryParams $queryParams');
+    final response = await _client
+        .get(uri, headers: _buildHeaders())
+        .timeout(_config.timeout);
 
     if (_config.logLevel == NovaLogLevel.debug) {
-      debugPrint('[Nova SDK] fetchConfig status: ${response.statusCode}, body: ${response.body}');
+      debugPrint(
+          '[Nova SDK] fetchConfig status: ${response.statusCode}, body: ${response.body}');
     }
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to fetch widget configuration (HTTP ${response.statusCode}): ${response.body}');
+      throw Exception(
+          'Failed to fetch widget configuration (HTTP ${response.statusCode}): ${response.body}');
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -81,20 +95,27 @@ class NovaApiService {
   /// Obtains a new visitor session token.
   Future<String> fetchSessionToken(String publicKey) async {
     final uri = _buildUri('/api/widget/session');
+    final payload = <String, dynamic>{'key': publicKey};
+    final mobileOrigin = _config.mobileOriginParams;
+    if (mobileOrigin != null) {
+      payload.addAll(mobileOrigin);
+    }
     final response = await _client
         .post(
           uri,
           headers: _buildHeaders({'Content-Type': 'application/json'}),
-          body: jsonEncode({'key': publicKey}),
+          body: jsonEncode(payload),
         )
         .timeout(_config.timeout);
 
     if (_config.logLevel == NovaLogLevel.debug) {
-      debugPrint('[Nova SDK] fetchSessionToken status: ${response.statusCode}, body: ${response.body}');
+      debugPrint(
+          '[Nova SDK] fetchSessionToken status: ${response.statusCode}, body: ${response.body}');
     }
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to create widget session (HTTP ${response.statusCode}): ${response.body}');
+      throw Exception(
+          'Failed to create widget session (HTTP ${response.statusCode}): ${response.body}');
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -108,6 +129,11 @@ class NovaApiService {
   /// Fetches existing chat history for the visitor session token.
   Future<List<NovaChatMessage>> fetchMessages(String token) async {
     final uri = _buildUri('/api/widget/messages');
+    final payload = <String, dynamic>{'token': token};
+    final mobileOrigin = _config.mobileOriginParams;
+    if (mobileOrigin != null) {
+      payload.addAll(mobileOrigin);
+    }
     final response = await _client
         .post(
           uri,
@@ -115,7 +141,7 @@ class NovaApiService {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
           }),
-          body: jsonEncode({'token': token}),
+          body: jsonEncode(payload),
         )
         .timeout(_config.timeout);
 
@@ -124,13 +150,16 @@ class NovaApiService {
     }
 
     if (response.statusCode != 200) {
-      throw Exception('Failed to fetch messages (HTTP ${response.statusCode}): ${response.body}');
+      throw Exception(
+          'Failed to fetch messages (HTTP ${response.statusCode}): ${response.body}');
     }
 
     final data = jsonDecode(response.body) as Map<String, dynamic>;
     final rawList = data['messages'];
     if (rawList is List) {
-      return rawList.map((e) => NovaChatMessage.fromJson(e as Map<String, dynamic>)).toList();
+      return rawList
+          .map((e) => NovaChatMessage.fromJson(e as Map<String, dynamic>))
+          .toList();
     }
     return [];
   }
@@ -146,10 +175,15 @@ class NovaApiService {
       'Content-Type': 'application/json',
       'Accept': 'text/event-stream',
     }));
-    request.body = jsonEncode({
+    final payload = <String, dynamic>{
       'token': token,
       'message': message,
-    });
+    };
+    final mobileOrigin = _config.mobileOriginParams;
+    if (mobileOrigin != null) {
+      payload.addAll(mobileOrigin);
+    }
+    request.body = jsonEncode(payload);
 
     if (_config.logLevel == NovaLogLevel.debug) {
       debugPrint('[Nova SDK] Streaming message to $uri');
@@ -194,15 +228,22 @@ class NovaApiService {
   Future<bool> closeConversation(String token) async {
     try {
       final uri = _buildUri('/api/widget/conversations/close');
+      final payload = <String, dynamic>{'token': token};
+      final mobileOrigin = _config.mobileOriginParams;
+      if (mobileOrigin != null) {
+        payload.addAll(mobileOrigin);
+      }
       final response = await _client
           .post(
             uri,
             headers: _buildHeaders({'Content-Type': 'application/json'}),
-            body: jsonEncode({'token': token}),
+            body: jsonEncode(payload),
           )
           .timeout(_config.timeout);
 
-      return response.statusCode == 200 || response.statusCode == 204 || response.statusCode == 401;
+      return response.statusCode == 200 ||
+          response.statusCode == 204 ||
+          response.statusCode == 401;
     } catch (_) {
       return false;
     }
