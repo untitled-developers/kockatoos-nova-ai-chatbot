@@ -42,22 +42,22 @@ void main() {
       expect(config.resolvedOrigin, 'http://10.0.2.2:8000');
     });
 
-    test('NovaConfig supports mobile origin types (android_sha256_hash & ios_package_name)', () {
+    test('NovaConfig supports mobile origin types (android_sha256_hash & ios_bundle_identifier)', () {
       const androidConfig = NovaConfig(
         apiKey: 'test_pk',
         androidSha256Hash: 'A1:B2:C3:D4:E5:F6',
       );
       expect(androidConfig.mobileOriginParams, {
-        'type': 'android',
+        'type': 'android_sha256_hash',
         'value': 'A1:B2:C3:D4:E5:F6',
       });
 
       const iosConfig = NovaConfig(
         apiKey: 'test_pk',
-        iosPackageName: 'com.example.app',
+        iosBundleIdentifier: 'com.example.app',
       );
       expect(iosConfig.mobileOriginParams, {
-        'type': 'ios',
+        'type': 'ios_bundle_identifier',
         'value': 'com.example.app',
       });
     });

@@ -10,7 +10,7 @@ void main() async {
   // Replace 'YOUR_LIVE_PUBLIC_KEY' with your workspace public key from admin
   // ---------------------------------------------------------------------------
   const String liveBackendUrl = 'http://10.0.2.2:8000';
-  const String workspacePublicKey = 'kc_3XA9M9ccS3iy3Et8b8TJ6vltrRmlYOxA';
+  const String workspacePublicKey = 'kc_xZjqdOYmzfEd0I1gtNTgPbo2ESnB4Scd';
 
   // Initialize Nova SDK with Live Backend Server, Mobile Origins & Admin Panel Config
   await Nova.initialize(

@@ -20,7 +20,7 @@ class NovaConfig {
   final bool allowEmojis;
   final String? origin;
   final String? androidSha256Hash;
-  final String? iosPackageName;
+  final String? iosBundleIdentifier;
 
   const NovaConfig({
     this.apiKey,
@@ -28,7 +28,7 @@ class NovaConfig {
     this.baseUrl = 'http://10.0.2.2:8000',
     this.origin,
     this.androidSha256Hash,
-    this.iosPackageName,
+    this.iosBundleIdentifier,
     this.logLevel = kReleaseMode ? NovaLogLevel.none : NovaLogLevel.error,
     this.timeout = const Duration(seconds: 15),
     this.theme = 'indigo',
@@ -54,18 +54,18 @@ class NovaConfig {
     if (defaultTargetPlatform == TargetPlatform.android &&
         androidSha256Hash != null &&
         androidSha256Hash!.trim().isNotEmpty) {
-      return {'type': 'android', 'value': androidSha256Hash!.trim()};
+      return {'type': 'android_sha256_hash', 'value': androidSha256Hash!.trim()};
     }
     if (defaultTargetPlatform == TargetPlatform.iOS &&
-        iosPackageName != null &&
-        iosPackageName!.trim().isNotEmpty) {
-      return {'type': 'ios', 'value': iosPackageName!.trim()};
+        iosBundleIdentifier != null &&
+        iosBundleIdentifier!.trim().isNotEmpty) {
+      return {'type': 'ios_bundle_identifier', 'value': iosBundleIdentifier!.trim()};
     }
     if (androidSha256Hash != null && androidSha256Hash!.trim().isNotEmpty) {
-      return {'type': 'android', 'value': androidSha256Hash!.trim()};
+      return {'type': 'android_sha256_hash', 'value': androidSha256Hash!.trim()};
     }
-    if (iosPackageName != null && iosPackageName!.trim().isNotEmpty) {
-      return {'type': 'ios', 'value': iosPackageName!.trim()};
+    if (iosBundleIdentifier != null && iosBundleIdentifier!.trim().isNotEmpty) {
+      return {'type': 'ios_bundle_identifier', 'value': iosBundleIdentifier!.trim()};
     }
     return null;
   }
