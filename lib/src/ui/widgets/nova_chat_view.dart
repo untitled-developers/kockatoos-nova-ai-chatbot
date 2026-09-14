@@ -159,24 +159,79 @@ class _NovaChatViewState extends State<NovaChatView> {
               child: Stack(
                 children: [
                   _buildBody(state, theme),
-                  if (_showScrollBottom)
-                    Positioned(
-                      bottom: 12,
-                      right: 16,
-                      child: FloatingActionButton.small(
-                        heroTag: 'nova_scroll_bottom',
-                        backgroundColor: theme.primary,
-                        elevation: 3,
-                        onPressed: () => _scrollToBottom(true),
-                        child: const Icon(Icons.arrow_downward,
-                            color: Colors.white, size: 18),
-                      ),
-                    ),
+                  _buildScrollToBottomButton(theme),
                 ],
               ),
             ),
             _buildInputBar(theme),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScrollToBottomButton(NovaTheme theme) {
+    return Positioned(
+      bottom: 12,
+      left: 0,
+      right: 0,
+      child: Center(
+        child: AnimatedOpacity(
+          opacity: _showScrollBottom ? 1.0 : 0.0,
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          child: IgnorePointer(
+            ignoring: !_showScrollBottom,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _showScrollBottom = false;
+                  });
+                  _scrollToBottom(true);
+                },
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF221F1F),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.arrow_downward_rounded,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'New messages below',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.1,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
         ),
       ),
     );
@@ -380,6 +435,16 @@ class _NovaChatViewState extends State<NovaChatView> {
 
           if (msgIndex >= 0 && msgIndex < msgs.length) {
             final message = msgs[msgIndex];
+
+            // Hide the greeting until the user has genuinely reached the
+            // beginning of the conversation. While there is still older history
+            // to page through, the greeting would otherwise float above every
+            // batch — exactly the WhatsApp anti-pattern we want to avoid.
+            // if (message.id == 'init-1' &&
+            //     (state.hasMoreHistory || state.isLoadingHistory)) {
+            //   return const SizedBox.shrink();
+            // }
+
             final shouldAnimate =
                 _initialMessageCount >= 0 && msgIndex >= _initialMessageCount;
             return _AnimatedMessageBubble(
