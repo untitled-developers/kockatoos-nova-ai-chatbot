@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 typedef NovaTokenResolver = Future<String> Function();
 
@@ -19,7 +20,16 @@ class NovaConfig {
   final List<String>? suggestedMessages;
   final bool allowEmojis;
   final String? origin;
+
+  /// SHA-256 fingerprint of the Android signing certificate, or the app's
+  /// package name — whichever value was registered in the portal under
+  /// "Allowed Android Packages". Use [NovaConfig.autoDetect] to populate this
+  /// automatically from [PackageInfo.packageName].
   final String? androidSha256Hash;
+
+  /// The iOS bundle identifier (e.g. `com.example.myapp`). Use
+  /// [NovaConfig.autoDetect] to populate this automatically from
+  /// [PackageInfo.packageName].
   final String? iosBundleIdentifier;
 
   const NovaConfig({
@@ -42,6 +52,64 @@ class NovaConfig {
           apiKey != null || tokenResolver != null,
           'Either apiKey or tokenResolver must be provided to NovaConfig.',
         );
+
+  /// Creates a [NovaConfig] with platform identifiers auto-detected via
+  /// [PackageInfo.fromPlatform()]:
+  ///
+  /// - **iOS** → sets [iosBundleIdentifier] from [PackageInfo.packageName]
+  /// - **Android** → sets [androidSha256Hash] from [PackageInfo.packageName]
+  ///
+  /// Explicit [iosBundleIdentifier] / [androidSha256Hash] arguments take
+  /// precedence over the auto-detected value when provided.
+  static Future<NovaConfig> autoDetect({
+    String? apiKey,
+    NovaTokenResolver? tokenResolver,
+    String baseUrl = 'http://10.0.2.2:8000',
+    String? origin,
+    String? androidSha256Hash,
+    String? iosBundleIdentifier,
+    NovaLogLevel? logLevel,
+    Duration timeout = const Duration(seconds: 15),
+    String? theme = 'indigo',
+    String? primaryColor,
+    String? secondaryColor,
+    String? agentName,
+    String? greetingMessage,
+    List<String>? suggestedMessages,
+    bool allowEmojis = true,
+  }) async {
+    assert(
+      apiKey != null || tokenResolver != null,
+      'Either apiKey or tokenResolver must be provided to NovaConfig.autoDetect.',
+    );
+
+    final info = await PackageInfo.fromPlatform();
+    final packageName = info.packageName.trim();
+
+    return NovaConfig(
+      apiKey: apiKey,
+      tokenResolver: tokenResolver,
+      baseUrl: baseUrl,
+      origin: origin,
+      androidSha256Hash: androidSha256Hash ??
+          (defaultTargetPlatform == TargetPlatform.android && packageName.isNotEmpty
+              ? packageName
+              : null),
+      iosBundleIdentifier: iosBundleIdentifier ??
+          (defaultTargetPlatform == TargetPlatform.iOS && packageName.isNotEmpty
+              ? packageName
+              : null),
+      logLevel: logLevel ?? (kReleaseMode ? NovaLogLevel.none : NovaLogLevel.error),
+      timeout: timeout,
+      theme: theme,
+      primaryColor: primaryColor,
+      secondaryColor: secondaryColor,
+      agentName: agentName,
+      greetingMessage: greetingMessage,
+      suggestedMessages: suggestedMessages,
+      allowEmojis: allowEmojis,
+    );
+  }
 
   Future<String> getAuthToken() async {
     if (tokenResolver != null) {

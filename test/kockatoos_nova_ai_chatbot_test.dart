@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kockatoos_nova_ai_chatbot/kockatoos_nova_ai_chatbot.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -60,6 +61,32 @@ void main() {
         'type': 'ios_bundle_identifier',
         'value': 'com.example.app',
       });
+    });
+
+    test('NovaConfig.autoDetect populates platform identifier from PackageInfo', () async {
+      // Stub the PackageInfo platform channel to return a known package name.
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+          .setMockMethodCallHandler(
+        const MethodChannel('dev.fluttercommunity.plus/package_info'),
+        (MethodCall call) async => {
+          'appName': 'TestApp',
+          'packageName': 'com.example.testapp',
+          'version': '1.0.0',
+          'buildNumber': '1',
+          'buildSignature': '',
+          'installerStore': null,
+        },
+      );
+
+      final config = await NovaConfig.autoDetect(apiKey: 'test_pk');
+
+      // In the test environment defaultTargetPlatform resolves to
+      // TargetPlatform.android, so androidSha256Hash should be set.
+      expect(
+        config.androidSha256Hash ?? config.iosBundleIdentifier,
+        'com.example.testapp',
+      );
+      expect(config.mobileOriginParams, isNotNull);
     });
   });
 
