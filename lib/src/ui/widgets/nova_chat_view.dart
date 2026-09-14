@@ -71,12 +71,21 @@ class _NovaChatViewState extends State<NovaChatView> {
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
-    final currentScroll = _scrollController.position.pixels;
+    final pos = _scrollController.position;
+    final currentScroll = pos.pixels;
+
+    // Show/hide the scroll-to-bottom FAB.
     final shouldShow = currentScroll > 120;
     if (shouldShow != _showScrollBottom) {
       setState(() {
         _showScrollBottom = shouldShow;
       });
+    }
+
+    // The list is reverse:true, so the visual top is near maxScrollExtent.
+    // Trigger history load when within 80px of the top.
+    if (pos.pixels >= pos.maxScrollExtent - 80) {
+      _controller.loadMoreHistory();
     }
   }
 
@@ -329,7 +338,10 @@ class _NovaChatViewState extends State<NovaChatView> {
         _initialMessageCount = msgs.length;
       }
 
-      final totalCount = msgs.length + (state.isTyping ? 1 : 0);
+      // +1 for typing indicator (bottom), +1 for history-loading spinner (top).
+      final int extraBottom = state.isTyping ? 1 : 0;
+      final int extraTop = state.isLoadingHistory ? 1 : 0;
+      final totalCount = msgs.length + extraBottom + extraTop;
 
       return ListView.builder(
         controller: _scrollController,
@@ -337,13 +349,34 @@ class _NovaChatViewState extends State<NovaChatView> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         itemCount: totalCount,
         itemBuilder: (context, index) {
+          // index 0 = newest (bottom of screen)
+          // index totalCount-1 = oldest (top of screen)
+
+          // Typing indicator sits at the very bottom (index 0).
           if (state.isTyping && index == 0) {
             return _buildTypingIndicator(theme);
           }
 
-          final msgIndex = state.isTyping
-              ? msgs.length - index
-              : msgs.length - 1 - index;
+          // History-loading spinner sits at the very top (last index).
+          if (state.isLoadingHistory && index == totalCount - 1) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: theme.primary,
+                  ),
+                ),
+              ),
+            );
+          }
+
+          // Offset the raw index by typing indicator offset.
+          final adjustedIndex = index - extraBottom;
+          final msgIndex = msgs.length - 1 - adjustedIndex;
 
           if (msgIndex >= 0 && msgIndex < msgs.length) {
             final message = msgs[msgIndex];

@@ -126,10 +126,18 @@ class NovaApiService {
     return token;
   }
 
-  /// Fetches existing chat history for the visitor session token.
-  Future<List<NovaChatMessage>> fetchMessages(String token) async {
+  /// Fetches chat history for the visitor session token.
+  ///
+  /// Pass [before] (a message ID) to load the page of messages that came
+  /// chronologically before that ID — i.e. cursor-based pagination.
+  /// Omit [before] to load the most-recent page.
+  Future<List<NovaChatMessage>> fetchMessages(String token,
+      {String? before}) async {
     final uri = _buildUri('/api/widget/messages');
     final payload = <String, dynamic>{'token': token};
+    if (before != null && before.isNotEmpty) {
+      payload['before'] = before;
+    }
     final mobileOrigin = _config.mobileOriginParams;
     if (mobileOrigin != null) {
       payload.addAll(mobileOrigin);

@@ -29,12 +29,16 @@ class NovaChatLoaded extends NovaChatState {
   final bool isTyping;
   final bool isStreaming;
   final NovaWidgetConfig? remoteConfig;
+  final bool hasMoreHistory;
+  final bool isLoadingHistory;
 
   const NovaChatLoaded({
     required this.messages,
     this.isTyping = false,
     this.isStreaming = false,
     this.remoteConfig,
+    this.hasMoreHistory = false,
+    this.isLoadingHistory = false,
   });
 
   NovaChatLoaded copyWith({
@@ -42,12 +46,16 @@ class NovaChatLoaded extends NovaChatState {
     bool? isTyping,
     bool? isStreaming,
     NovaWidgetConfig? remoteConfig,
+    bool? hasMoreHistory,
+    bool? isLoadingHistory,
   }) {
     return NovaChatLoaded(
       messages: messages ?? this.messages,
       isTyping: isTyping ?? this.isTyping,
       isStreaming: isStreaming ?? this.isStreaming,
       remoteConfig: remoteConfig ?? this.remoteConfig,
+      hasMoreHistory: hasMoreHistory ?? this.hasMoreHistory,
+      isLoadingHistory: isLoadingHistory ?? this.isLoadingHistory,
     );
   }
 }
@@ -90,6 +98,15 @@ class NovaChatController extends ChangeNotifier {
 
   bool _isStreaming = false;
   bool get isStreaming => _isStreaming;
+
+  /// True while a history page is being fetched from the server.
+  bool _isLoadingHistory = false;
+  bool get isLoadingHistory => _isLoadingHistory;
+
+  /// False once the server returns an empty page, meaning there are no older
+  /// messages to load.
+  bool _hasMoreHistory = false;
+  bool get hasMoreHistory => _hasMoreHistory;
 
   StreamSubscription<String>? _streamSubscription;
 
@@ -327,6 +344,8 @@ class NovaChatController extends ChangeNotifier {
           }
           _messages = [getStarterGreetingMessage(), ...remoteHistory];
           await _saveLocalMessages(_messages);
+          // If the server returned a full page there may be older messages.
+          _hasMoreHistory = true;
         }
       } catch (e) {
         if (_config.logLevel == NovaLogLevel.debug) {
@@ -339,6 +358,8 @@ class NovaChatController extends ChangeNotifier {
         isTyping: false,
         isStreaming: false,
         remoteConfig: _remoteConfig,
+        hasMoreHistory: _hasMoreHistory,
+        isLoadingHistory: false,
       ));
     } catch (e) {
       _setState(NovaChatError('Failed to initialize Nova Chat: $e'));
@@ -573,7 +594,60 @@ class NovaChatController extends ChangeNotifier {
     }
 
     _messages = [getStarterGreetingMessage()];
+    _hasMoreHistory = false;
+    _isLoadingHistory = false;
     _notifyLoadedState();
+  }
+
+  /// Loads the page of messages that came before the oldest message currently
+  /// in [_messages]. Safe to call from the UI scroll listener — guards against
+  /// concurrent fetches and a exhausted history.
+  Future<void> loadMoreHistory() async {
+    if (_isLoadingHistory || !_hasMoreHistory) return;
+    if (_sessionToken == null || _sessionToken!.isEmpty) return;
+
+    // Find the oldest real message ID (skip the synthetic greeting 'init-1').
+    final realMessages = _messages.where((m) => m.id != 'init-1').toList();
+    if (realMessages.isEmpty) return;
+
+    // The oldest message is at index 1 (after the greeting) in _messages,
+    // i.e. the first element of realMessages.
+    final oldestId = realMessages.first.id;
+
+    _isLoadingHistory = true;
+    _notifyLoadedState();
+
+    try {
+      final page = await _apiService.fetchMessages(
+        _sessionToken!,
+        before: oldestId,
+      );
+
+      if (page.isEmpty) {
+        // No more history on the server.
+        _hasMoreHistory = false;
+      } else {
+        // Prepend the older page right after the greeting message.
+        // _messages layout: [greeting, ...older, ...newer]
+        final greeting = _messages.first; // always init-1
+        final rest = _messages.sublist(1);
+        _messages = [greeting, ...page, ...rest];
+        await _saveLocalMessages(_messages);
+
+        if (_config.logLevel == NovaLogLevel.debug) {
+          debugPrint(
+              '[Nova SDK] Loaded ${page.length} older messages (before $oldestId).');
+        }
+      }
+    } catch (e) {
+      if (_config.logLevel == NovaLogLevel.debug ||
+          _config.logLevel == NovaLogLevel.error) {
+        debugPrint('[Nova SDK] loadMoreHistory error: $e');
+      }
+    } finally {
+      _isLoadingHistory = false;
+      _notifyLoadedState();
+    }
   }
 
   void setTheme(NovaTheme newTheme) {
@@ -593,6 +667,8 @@ class NovaChatController extends ChangeNotifier {
       isTyping: _isTyping,
       isStreaming: _isStreaming,
       remoteConfig: _remoteConfig,
+      hasMoreHistory: _hasMoreHistory,
+      isLoadingHistory: _isLoadingHistory,
     ));
   }
 
