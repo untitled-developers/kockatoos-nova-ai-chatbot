@@ -10,6 +10,7 @@ import '../../data/models/nova_chat_message.dart';
 import '../controllers/nova_chat_controller.dart';
 import '../theme/nova_theme.dart';
 import 'nova_chat_pattern_background.dart';
+import 'nova_icons.dart';
 
 class NovaChatView extends StatefulWidget {
   final NovaChatController? controller;
@@ -138,29 +139,51 @@ class _NovaChatViewState extends State<NovaChatView> {
     final theme = _controller.theme;
     final state = _controller.state;
 
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      child: SafeArea(
-        top: !widget.isModal,
-        bottom: true,
-        child: Column(
-          children: [
-            _buildHeader(theme),
-            Expanded(
-              child: NovaChatPatternBackground(
-                child: Stack(
-                  children: [
-                    _buildBody(state, theme),
-                    _buildScrollToBottomButton(theme),
-                  ],
-                ),
-              ),
-            ),
-            _buildInputBar(theme),
+    // Apply Poppins — the same font used by the landing page and the web widget
+    // (.kockatoos-widget { font-family: 'Poppins', … }). A local Theme ensures
+    // this is self-contained: the host app's font is never overridden globally.
+    return Theme(
+      data: Theme.of(context).copyWith(
+        textTheme: Theme.of(context).textTheme.apply(
+          fontFamily: 'Poppins',
+          // Package fonts must be referenced with their package prefix.
+          fontFamilyFallback: const [
+            'ui-sans-serif',
+            'system-ui',
+            '-apple-system',
+            'Segoe UI',
+            'Roboto',
+            'sans-serif',
           ],
+        ),
+      ),
+      child: DefaultTextStyle.merge(
+        style: const TextStyle(fontFamily: 'Poppins'),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+          ),
+          child: SafeArea(
+            top: !widget.isModal,
+            bottom: true,
+            child: Column(
+              children: [
+                _buildHeader(theme),
+                Expanded(
+                  child: NovaChatPatternBackground(
+                    child: Stack(
+                      children: [
+                        _buildBody(state, theme),
+                        _buildScrollToBottomButton(theme),
+                      ],
+                    ),
+                  ),
+                ),
+                _buildInputBar(theme),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -248,13 +271,12 @@ class _NovaChatViewState extends State<NovaChatView> {
           width: 40,
           height: 40,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy_outlined,
-              color: Colors.white, size: 22),
+          errorBuilder: (_, __, ___) =>
+              NovaIcons.botAvatar(color: Colors.white, size: 22),
         ),
       );
     } else {
-      avatarChild =
-          const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 22);
+      avatarChild = NovaIcons.botAvatar(color: Colors.white, size: 22);
     }
 
     final isEnabled = _controller.remoteConfig?.isEnabled ?? true;
@@ -267,19 +289,34 @@ class _NovaChatViewState extends State<NovaChatView> {
       ),
       child: Row(
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [theme.gradientFrom, theme.gradientTo],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          Stack(children: [
+            Container(
+              width: 40,
+              height: 40,
+              padding: EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [theme.gradientFrom, theme.gradientTo],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
               ),
-              shape: BoxShape.circle,
+              child: avatarChild,
             ),
-            child: avatarChild,
-          ),
+            Positioned(
+              bottom: 2,
+              right: 2,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: isEnabled ? const Color(0xFF009966) : Colors.grey,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ]),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -295,27 +332,16 @@ class _NovaChatViewState extends State<NovaChatView> {
                 ),
                 Row(
                   children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color:
-                            isEnabled ? const Color(0xFF10B981) : Colors.grey,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
                     Expanded(
                       child: Text(
-                        isEnabled
-                            ? 'Online • Usually replies instantly'
-                            : 'Offline • Disabled by admin',
+                        isEnabled ? 'Active now' : 'Offline',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
+                          fontWeight: FontWeight.w600,
                           color:
-                              isEnabled ? const Color(0xFF64748B) : Colors.grey,
+                              isEnabled ? const Color(0xFF009966) : Colors.grey,
                         ),
                       ),
                     ),
@@ -436,10 +462,10 @@ class _NovaChatViewState extends State<NovaChatView> {
             // beginning of the conversation. While there is still older history
             // to page through, the greeting would otherwise float above every
             // batch — exactly the WhatsApp anti-pattern we want to avoid.
-            // if (message.id == 'init-1' &&
-            //     (state.hasMoreHistory || state.isLoadingHistory)) {
-            //   return const SizedBox.shrink();
-            // }
+            if (message.id == 'init-1' &&
+                (state.hasMoreHistory || state.isLoadingHistory)) {
+              return const SizedBox.shrink();
+            }
 
             final shouldAnimate =
                 _initialMessageCount >= 0 && msgIndex >= _initialMessageCount;
@@ -475,11 +501,34 @@ class _NovaChatViewState extends State<NovaChatView> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [theme.gradientFrom, theme.gradientTo],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
                 shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
               ),
-              child: const Icon(Icons.smart_toy_outlined,
-                  color: Colors.white, size: 18),
+              child: Center(
+                child: _controller.remoteConfig?.profilePicUrl != null &&
+                        _controller.remoteConfig!.profilePicUrl!.trim().isNotEmpty
+                    ? ClipOval(
+                        child: Image.network(
+                          _controller.remoteConfig!.profilePicUrl!,
+                          width: 28,
+                          height: 28,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              NovaIcons.botAvatar(color: Colors.white, size: 16),
+                        ),
+                      )
+                    : NovaIcons.botAvatar(color: Colors.white, size: 16),
+              ),
             ),
             const SizedBox(width: 10),
           ],
@@ -488,32 +537,70 @@ class _NovaChatViewState extends State<NovaChatView> {
               crossAxisAlignment:
                   isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: isUser ? theme.userBubbleBg : theme.botBubbleBg,
-                    borderRadius: BorderRadius.only(
-                      topLeft: const Radius.circular(16),
-                      topRight: const Radius.circular(16),
-                      bottomLeft: Radius.circular(isUser ? 16 : 4),
-                      bottomRight: Radius.circular(isUser ? 4 : 16),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * (isUser ? 0.82 : 0.85),
                   ),
-                  child: _buildMessageTextContent(msg, isUser, theme),
+                  child: Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: isUser ? 9 : 10,
+                    ),
+                    decoration: BoxDecoration(
+                      gradient: isUser
+                          ? LinearGradient(
+                              colors: [theme.primary, theme.primaryHover],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : null,
+                      color: isUser ? null : Colors.white,
+                      border: isUser
+                          ? null
+                          : Border.all(color: const Color(0xFFF1F5F9), width: 1),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(isUser ? 16 : 3),
+                        topRight: Radius.circular(isUser ? 3 : 16),
+                        bottomLeft: const Radius.circular(16),
+                        bottomRight: const Radius.circular(16),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isUser
+                              ? theme.primary.withValues(alpha: 0.22)
+                              : Colors.black.withValues(alpha: 0.04),
+                          blurRadius: isUser ? 4 : 3,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: _buildMessageTextContent(msg, isUser, theme),
+                  ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  msg.timestamp,
-                  style:
-                      const TextStyle(fontSize: 10, color: Color(0xFF94A3B8)),
+                Padding(
+                  padding: const EdgeInsets.only(top: 3.0),
+                  child: isUser
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              msg.timestamp,
+                              style: const TextStyle(
+                                  fontSize: 11, color: Color(0xFF94A3B8)),
+                            ),
+                            const SizedBox(width: 3),
+                            Icon(
+                              Icons.check_rounded,
+                              size: 13,
+                              color: theme.primary,
+                            ),
+                          ],
+                        )
+                      : Text(
+                          msg.timestamp,
+                          style: const TextStyle(
+                              fontSize: 11, color: Color(0xFF94A3B8)),
+                        ),
                 ),
                 if (!isUser && msg.pills != null && msg.pills!.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -526,22 +613,30 @@ class _NovaChatViewState extends State<NovaChatView> {
                           _controller.sendMessage(pill);
                           _scrollToBottom(true);
                         },
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(20),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                               horizontal: 12, vertical: 6),
                           decoration: BoxDecoration(
-                            color: theme.primaryLight,
-                            borderRadius: BorderRadius.circular(16),
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                                color: theme.primary.withValues(alpha: 0.3)),
+                              color: theme.primary.withValues(alpha: 0.25),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.03),
+                                blurRadius: 2,
+                                offset: const Offset(0, 1),
+                              ),
+                            ],
                           ),
                           child: Text(
                             pill,
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
-                              color: theme.primaryText,
+                              color: theme.primary,
                             ),
                           ),
                         ),
@@ -577,19 +672,19 @@ class _NovaChatViewState extends State<NovaChatView> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: theme.botBubbleBg,
+                color: Colors.white,
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
+                  topLeft: Radius.circular(3),
                   topRight: Radius.circular(16),
                   bottomRight: Radius.circular(16),
-                  bottomLeft: Radius.circular(4),
+                  bottomLeft: Radius.circular(16),
                 ),
-                border: Border.all(color: Colors.grey.shade200),
+                border: Border.all(color: const Color(0xFFF1F5F9)),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+                    color: Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
                   ),
                 ],
               ),
@@ -629,7 +724,7 @@ class _NovaChatViewState extends State<NovaChatView> {
     } else if (!isConfigEnabled) {
       hintText = 'Chatbot is currently disabled by admin.';
     } else {
-      hintText = 'Ask a question...';
+      hintText = 'Type your message...';
     }
 
     return Container(
@@ -962,16 +1057,15 @@ class _PulsingAvatarRingState extends State<_PulsingAvatarRing>
       avatarChild = ClipOval(
         child: Image.network(
           widget.profilePicUrl!,
-          width: 32,
-          height: 32,
+          width: 28,
+          height: 28,
           fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const Icon(Icons.smart_toy_outlined,
-              color: Colors.white, size: 18),
+          errorBuilder: (_, __, ___) =>
+              NovaIcons.botAvatar(color: Colors.white, size: 16),
         ),
       );
     } else {
-      avatarChild =
-          const Icon(Icons.smart_toy_outlined, color: Colors.white, size: 18);
+      avatarChild = NovaIcons.botAvatar(color: Colors.white, size: 16);
     }
 
     return SizedBox(
@@ -1004,8 +1098,18 @@ class _PulsingAvatarRingState extends State<_PulsingAvatarRing>
               gradient: LinearGradient(
                   colors: [widget.theme.gradientFrom, widget.theme.gradientTo]),
               shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 4,
+                  offset: const Offset(0, 1),
+                ),
+              ],
             ),
-            child: avatarChild,
+            child: Center(
+              child: avatarChild,
+            ),
           ),
         ],
       ),
