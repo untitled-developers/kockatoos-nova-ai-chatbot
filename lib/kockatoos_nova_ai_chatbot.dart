@@ -16,3 +16,4 @@ export 'src/ui/theme/nova_theme.dart';
 export 'src/ui/widgets/kockatoos_nova_ai_chatbot_floating_button.dart';
 export 'src/ui/widgets/nova_chat_pattern_background.dart';
 export 'src/ui/widgets/nova_chat_view.dart';
+export 'src/ui/widgets/nova_icons.dart';

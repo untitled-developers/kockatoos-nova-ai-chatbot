@@ -4,6 +4,7 @@ import '../../core/kockatoos_nova_ai_chatbot_client.dart';
 import '../controllers/nova_chat_controller.dart';
 import '../theme/nova_theme.dart';
 import 'nova_chat_view.dart';
+import 'nova_icons.dart';
 
 class NovaFloatingButton extends StatefulWidget {
   final NovaChatController? controller;
@@ -17,7 +18,8 @@ class NovaFloatingButton extends StatefulWidget {
   State<NovaFloatingButton> createState() => _NovaFloatingButtonState();
 }
 
-class _NovaFloatingButtonState extends State<NovaFloatingButton> with SingleTickerProviderStateMixin {
+class _NovaFloatingButtonState extends State<NovaFloatingButton>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
   late final Animation<double> _pulseScaleAnimation;
   late final Animation<double> _pulseOpacityAnimation;
@@ -27,7 +29,8 @@ class _NovaFloatingButtonState extends State<NovaFloatingButton> with SingleTick
   NovaChatController? get _effectiveController {
     if (widget.controller != null) return widget.controller;
     if (!Nova.isInitialized) return null;
-    return _internalController ??= NovaChatController(config: Nova.instance.config);
+    return _internalController ??=
+        NovaChatController(config: Nova.instance.config);
   }
 
   @override
@@ -122,7 +125,8 @@ class _NovaFloatingButtonState extends State<NovaFloatingButton> with SingleTick
                       height: 56,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: theme.primary.withValues(alpha: _pulseOpacityAnimation.value),
+                        color: theme.primary
+                            .withValues(alpha: _pulseOpacityAnimation.value),
                       ),
                     ),
                   );
@@ -148,10 +152,12 @@ class _NovaFloatingButtonState extends State<NovaFloatingButton> with SingleTick
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.chat_bubble_outline_rounded,
-                  color: Colors.white,
-                  size: 26,
+                child: Padding(
+                  padding: const EdgeInsets.all(10.0),
+                  child: NovaIcons.fabChat(
+                    color: Colors.white,
+                    size: 26,
+                  ),
                 ),
               ),
               // Online Notification Badge

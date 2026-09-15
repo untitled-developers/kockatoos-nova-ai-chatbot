@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kockatoos_nova_ai_chatbot/kockatoos_nova_ai_chatbot.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -209,7 +210,7 @@ void main() {
         ),
       );
 
-      expect(find.byIcon(Icons.chat_bubble_outline_rounded), findsOneWidget);
+      expect(find.byType(SvgPicture), findsWidgets);
 
       // Now set controller as not allowed
       controller.initialize();
@@ -265,6 +266,24 @@ void main() {
 
       expect(find.byType(NovaChatPatternBackground), findsOneWidget);
       expect(find.text('Test Content'), findsOneWidget);
+    });
+
+    testWidgets('renders NovaIcons fabChat and botAvatar SVGs',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Column(
+              children: [
+                NovaIcons.fabChat(),
+                NovaIcons.botAvatar(),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(SvgPicture), findsNWidgets(2));
     });
   });
 }
