@@ -436,10 +436,10 @@ class _NovaChatViewState extends State<NovaChatView> {
             // beginning of the conversation. While there is still older history
             // to page through, the greeting would otherwise float above every
             // batch — exactly the WhatsApp anti-pattern we want to avoid.
-            if (message.id == 'init-1' &&
-                (state.hasMoreHistory || state.isLoadingHistory)) {
-              return const SizedBox.shrink();
-            }
+            // if (message.id == 'init-1' &&
+            //     (state.hasMoreHistory || state.isLoadingHistory)) {
+            //   return const SizedBox.shrink();
+            // }
 
             final shouldAnimate =
                 _initialMessageCount >= 0 && msgIndex >= _initialMessageCount;
