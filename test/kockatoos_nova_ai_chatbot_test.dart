@@ -248,6 +248,23 @@ void main() {
       expect(find.byType(NovaChatView), findsOneWidget);
       expect(find.byType(TextField), findsOneWidget);
       expect(find.text('Kockatoos Nova'), findsOneWidget);
+      expect(find.byType(NovaChatPatternBackground), findsOneWidget);
+    });
+
+    testWidgets('renders NovaChatPatternBackground with custom and default colors',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: NovaChatPatternBackground(
+              child: Text('Test Content'),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byType(NovaChatPatternBackground), findsOneWidget);
+      expect(find.text('Test Content'), findsOneWidget);
     });
   });
 }

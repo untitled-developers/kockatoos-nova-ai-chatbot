@@ -9,6 +9,7 @@ import '../../core/kockatoos_nova_ai_chatbot_client.dart';
 import '../../data/models/nova_chat_message.dart';
 import '../controllers/nova_chat_controller.dart';
 import '../theme/nova_theme.dart';
+import 'nova_chat_pattern_background.dart';
 
 class NovaChatView extends StatefulWidget {
   final NovaChatController? controller;
@@ -34,7 +35,6 @@ class _NovaChatViewState extends State<NovaChatView> {
   bool _showScrollBottom = false;
 
   int _initialMessageCount = -1;
-  bool _hasInitiallyJumpedToBottom = false;
 
   @override
   void initState() {
@@ -87,12 +87,6 @@ class _NovaChatViewState extends State<NovaChatView> {
     if (pos.pixels >= pos.maxScrollExtent - 80) {
       _controller.loadMoreHistory();
     }
-  }
-
-  void _jumpToBottomInstant() {
-    if (!mounted) return;
-    if (!_scrollController.hasClients) return;
-    _scrollController.jumpTo(0.0);
   }
 
   void _scrollToBottomSmooth() {
@@ -156,11 +150,13 @@ class _NovaChatViewState extends State<NovaChatView> {
           children: [
             _buildHeader(theme),
             Expanded(
-              child: Stack(
-                children: [
-                  _buildBody(state, theme),
-                  _buildScrollToBottomButton(theme),
-                ],
+              child: NovaChatPatternBackground(
+                child: Stack(
+                  children: [
+                    _buildBody(state, theme),
+                    _buildScrollToBottomButton(theme),
+                  ],
+                ),
               ),
             ),
             _buildInputBar(theme),
@@ -440,10 +436,10 @@ class _NovaChatViewState extends State<NovaChatView> {
             // beginning of the conversation. While there is still older history
             // to page through, the greeting would otherwise float above every
             // batch — exactly the WhatsApp anti-pattern we want to avoid.
-            // if (message.id == 'init-1' &&
-            //     (state.hasMoreHistory || state.isLoadingHistory)) {
-            //   return const SizedBox.shrink();
-            // }
+            if (message.id == 'init-1' &&
+                (state.hasMoreHistory || state.isLoadingHistory)) {
+              return const SizedBox.shrink();
+            }
 
             final shouldAnimate =
                 _initialMessageCount >= 0 && msgIndex >= _initialMessageCount;
