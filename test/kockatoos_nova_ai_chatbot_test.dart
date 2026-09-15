@@ -268,7 +268,7 @@ void main() {
       expect(find.text('Test Content'), findsOneWidget);
     });
 
-    testWidgets('renders NovaIcons fabChat and botAvatar SVGs',
+    testWidgets('renders all NovaIcons SVGs',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -277,13 +277,17 @@ void main() {
               children: [
                 NovaIcons.fabChat(),
                 NovaIcons.botAvatar(),
+                NovaIcons.soundOn(),
+                NovaIcons.soundOff(),
+                NovaIcons.newChat(),
+                NovaIcons.close(),
               ],
             ),
           ),
         ),
       );
 
-      expect(find.byType(SvgPicture), findsNWidgets(2));
+      expect(find.byType(SvgPicture), findsNWidgets(6));
     });
   });
 }

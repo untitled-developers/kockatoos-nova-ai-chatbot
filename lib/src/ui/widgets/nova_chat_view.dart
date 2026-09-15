@@ -351,21 +351,20 @@ class _NovaChatViewState extends State<NovaChatView> {
             ),
           ),
           IconButton(
-            icon: Icon(
-              _controller.soundEnabled ? Icons.volume_up : Icons.volume_off,
-              color: const Color(0xFF64748B),
-            ),
+            icon: _controller.soundEnabled
+                ? NovaIcons.soundOn(size: 20, color: theme.primary)
+                : NovaIcons.soundOff(size: 20, color: const Color(0xFF94A3B8)),
             tooltip: 'Toggle sound',
             onPressed: _controller.toggleSound,
           ),
           IconButton(
-            icon: const Icon(Icons.refresh, color: Color(0xFF64748B)),
+            icon: NovaIcons.newChat(size: 20, color: theme.primary),
             tooltip: 'New Conversation',
             onPressed: _confirmResetConversation,
           ),
           if (widget.onClose != null || widget.isModal)
             IconButton(
-              icon: const Icon(Icons.close, color: Color(0xFF64748B)),
+              icon: NovaIcons.close(size: 20, color: const Color(0xFF64748B)),
               tooltip: 'Close chat',
               onPressed: widget.onClose ?? () => Navigator.of(context).pop(),
             ),
