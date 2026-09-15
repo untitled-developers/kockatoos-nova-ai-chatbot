@@ -50,7 +50,7 @@ class NovaTheme {
     gradientTo: Color(0xFFF05A2B),
     userBubbleBg: Color(0xFFF05A2B),
     userBubbleText: Colors.white,
-    botBubbleBg: Color(0xFFF1F5F9),
+    botBubbleBg: Colors.white,
     botBubbleText: Color(0xFF1E293B),
   );
 
@@ -66,7 +66,7 @@ class NovaTheme {
       gradientTo: Color(0xFF0D9488),
       userBubbleBg: Color(0xFF059669),
       userBubbleText: Colors.white,
-      botBubbleBg: Color(0xFFF1F5F9),
+      botBubbleBg: Colors.white,
       botBubbleText: Color(0xFF1E293B),
     ),
     'ocean': NovaTheme(
@@ -79,7 +79,7 @@ class NovaTheme {
       gradientTo: Color(0xFF06B6D4),
       userBubbleBg: Color(0xFF2563EB),
       userBubbleText: Colors.white,
-      botBubbleBg: Color(0xFFF1F5F9),
+      botBubbleBg: Colors.white,
       botBubbleText: Color(0xFF1E293B),
     ),
     'rose': NovaTheme(
@@ -92,7 +92,7 @@ class NovaTheme {
       gradientTo: Color(0xFFC026D3),
       userBubbleBg: Color(0xFFE11D48),
       userBubbleText: Colors.white,
-      botBubbleBg: Color(0xFFF1F5F9),
+      botBubbleBg: Colors.white,
       botBubbleText: Color(0xFF1E293B),
     ),
     'amber': NovaTheme(
@@ -105,7 +105,7 @@ class NovaTheme {
       gradientTo: Color(0xFFEA580C),
       userBubbleBg: Color(0xFFD97706),
       userBubbleText: Colors.white,
-      botBubbleBg: Color(0xFFF1F5F9),
+      botBubbleBg: Colors.white,
       botBubbleText: Color(0xFF1E293B),
     ),
     'violet': NovaTheme(
@@ -118,7 +118,7 @@ class NovaTheme {
       gradientTo: Color(0xFFD946EF),
       userBubbleBg: Color(0xFF7C3AED),
       userBubbleText: Colors.white,
-      botBubbleBg: Color(0xFFF1F5F9),
+      botBubbleBg: Colors.white,
       botBubbleText: Color(0xFF1E293B),
     ),
     'slate': NovaTheme(
@@ -131,7 +131,7 @@ class NovaTheme {
       gradientTo: Color(0xFF0F172A),
       userBubbleBg: Color(0xFF334155),
       userBubbleText: Colors.white,
-      botBubbleBg: Color(0xFFF1F5F9),
+      botBubbleBg: Colors.white,
       botBubbleText: Color(0xFF1E293B),
     ),
   };
@@ -152,7 +152,7 @@ class NovaTheme {
         gradientTo: sColor,
         userBubbleBg: pColor,
         userBubbleText: Colors.white,
-        botBubbleBg: const Color(0xFFF1F5F9),
+        botBubbleBg: Colors.white,
         botBubbleText: const Color(0xFF1E293B),
       );
     }
@@ -174,7 +174,7 @@ class NovaTheme {
           gradientTo: pColor,
           userBubbleBg: pColor,
           userBubbleText: Colors.white,
-          botBubbleBg: const Color(0xFFF1F5F9),
+          botBubbleBg: Colors.white,
           botBubbleText: const Color(0xFF1E293B),
         );
       }
