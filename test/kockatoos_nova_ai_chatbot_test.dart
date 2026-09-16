@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kockatoos_nova_ai_chatbot/kockatoos_nova_ai_chatbot.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -65,18 +66,13 @@ void main() {
     });
 
     test('NovaConfig.autoDetect populates platform identifier from PackageInfo', () async {
-      // Stub the PackageInfo platform channel to return a known package name.
-      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-          .setMockMethodCallHandler(
-        const MethodChannel('dev.fluttercommunity.plus/package_info'),
-        (MethodCall call) async => {
-          'appName': 'TestApp',
-          'packageName': 'com.example.testapp',
-          'version': '1.0.0',
-          'buildNumber': '1',
-          'buildSignature': '',
-          'installerStore': null,
-        },
+      PackageInfo.setMockInitialValues(
+        appName: 'TestApp',
+        packageName: 'com.example.testapp',
+        version: '1.0.0',
+        buildNumber: '1',
+        buildSignature: '',
+        installerStore: null,
       );
 
       final config = await NovaConfig.autoDetect(apiKey: 'test_pk');
@@ -88,6 +84,54 @@ void main() {
         'com.example.testapp',
       );
       expect(config.mobileOriginParams, isNotNull);
+    });
+
+    test('NovaConfig normalizes 64-hex SHA-256 fingerprints in mobileOriginParams', () {
+      const configWithColons = NovaConfig(
+        apiKey: 'test_pk',
+        androidSha256Hash:
+            '84:C1:48:36:9A:4F:D7:37:E5:00:27:61:AD:73:70:39:D9:3F:99:12:AA:09:D4:B5:57:69:4F:E4:8A:34:D8:7E',
+      );
+      expect(configWithColons.mobileOriginParams, {
+        'type': 'android_sha256_hash',
+        'value':
+            '84C148369A4FD737E5002761AD737039D93F9912AA09D4B557694FE48A34D87E',
+      });
+
+      const configLowercase = NovaConfig(
+        apiKey: 'test_pk',
+        androidSha256Hash:
+            '84c148369a4fd737e5002761ad737039d93f9912aa09d4b557694fe48a34d87e',
+      );
+      expect(configLowercase.mobileOriginParams, {
+        'type': 'android_sha256_hash',
+        'value':
+            '84C148369A4FD737E5002761AD737039D93F9912AA09D4B557694FE48A34D87E',
+      });
+    });
+
+    test('NovaConfig.autoDetect prioritizes buildSignature on Android', () async {
+      PackageInfo.setMockInitialValues(
+        appName: 'TestApp',
+        packageName: 'com.example.testapp',
+        version: '1.0.0',
+        buildNumber: '1',
+        buildSignature:
+            '84C148369A4FD737E5002761AD737039D93F9912AA09D4B557694FE48A34D87E',
+        installerStore: null,
+      );
+
+      final config = await NovaConfig.autoDetect(apiKey: 'test_pk');
+
+      expect(
+        config.androidSha256Hash,
+        '84C148369A4FD737E5002761AD737039D93F9912AA09D4B557694FE48A34D87E',
+      );
+      expect(config.mobileOriginParams, {
+        'type': 'android_sha256_hash',
+        'value':
+            '84C148369A4FD737E5002761AD737039D93F9912AA09D4B557694FE48A34D87E',
+      });
     });
   });
 

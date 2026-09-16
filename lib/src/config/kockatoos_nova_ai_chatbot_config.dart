@@ -85,6 +85,9 @@ class NovaConfig {
 
     final info = await PackageInfo.fromPlatform();
     final packageName = info.packageName.trim();
+    final detectedSignature = info.buildSignature.trim();
+    final detectedAndroid =
+        detectedSignature.isNotEmpty ? detectedSignature : packageName;
 
     return NovaConfig(
       apiKey: apiKey,
@@ -92,14 +95,16 @@ class NovaConfig {
       baseUrl: baseUrl,
       origin: origin,
       androidSha256Hash: androidSha256Hash ??
-          (defaultTargetPlatform == TargetPlatform.android && packageName.isNotEmpty
-              ? packageName
+          (defaultTargetPlatform == TargetPlatform.android &&
+                  detectedAndroid.isNotEmpty
+              ? detectedAndroid
               : null),
       iosBundleIdentifier: iosBundleIdentifier ??
           (defaultTargetPlatform == TargetPlatform.iOS && packageName.isNotEmpty
               ? packageName
               : null),
-      logLevel: logLevel ?? (kReleaseMode ? NovaLogLevel.none : NovaLogLevel.error),
+      logLevel:
+          logLevel ?? (kReleaseMode ? NovaLogLevel.none : NovaLogLevel.error),
       timeout: timeout,
       theme: theme,
       primaryColor: primaryColor,
@@ -109,6 +114,15 @@ class NovaConfig {
       suggestedMessages: suggestedMessages,
       allowEmojis: allowEmojis,
     );
+  }
+
+  /// Normalizes a 64-hex-character SHA-256 fingerprint by stripping colons,
+  /// spaces, and dashes and converting to uppercase. Non-hash values (such as
+  /// package names) are returned trimmed as-is.
+  static String? normalizeSha256(String? value) {
+    if (value == null) return null;
+    final clean = value.replaceAll(RegExp(r'[^a-fA-F0-9]'), '').toUpperCase();
+    return clean.length == 64 ? clean : value.trim();
   }
 
   Future<String> getAuthToken() async {
@@ -122,18 +136,30 @@ class NovaConfig {
     if (defaultTargetPlatform == TargetPlatform.android &&
         androidSha256Hash != null &&
         androidSha256Hash!.trim().isNotEmpty) {
-      return {'type': 'android_sha256_hash', 'value': androidSha256Hash!.trim()};
+      return {
+        'type': 'android_sha256_hash',
+        'value': normalizeSha256(androidSha256Hash) ?? androidSha256Hash!.trim(),
+      };
     }
     if (defaultTargetPlatform == TargetPlatform.iOS &&
         iosBundleIdentifier != null &&
         iosBundleIdentifier!.trim().isNotEmpty) {
-      return {'type': 'ios_bundle_identifier', 'value': iosBundleIdentifier!.trim()};
+      return {
+        'type': 'ios_bundle_identifier',
+        'value': iosBundleIdentifier!.trim(),
+      };
     }
     if (androidSha256Hash != null && androidSha256Hash!.trim().isNotEmpty) {
-      return {'type': 'android_sha256_hash', 'value': androidSha256Hash!.trim()};
+      return {
+        'type': 'android_sha256_hash',
+        'value': normalizeSha256(androidSha256Hash) ?? androidSha256Hash!.trim(),
+      };
     }
     if (iosBundleIdentifier != null && iosBundleIdentifier!.trim().isNotEmpty) {
-      return {'type': 'ios_bundle_identifier', 'value': iosBundleIdentifier!.trim()};
+      return {
+        'type': 'ios_bundle_identifier',
+        'value': iosBundleIdentifier!.trim(),
+      };
     }
     return null;
   }

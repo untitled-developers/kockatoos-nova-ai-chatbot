@@ -14,10 +14,9 @@ void main() async {
 
   // Initialize Nova SDK with Live Backend Server, Mobile Origins & Admin Panel Config
   await Nova.initialize(
-    config: const NovaConfig(
+    config: await NovaConfig.autoDetect(
       apiKey: workspacePublicKey,
       baseUrl: liveBackendUrl,
-      androidSha256Hash: 'com.kockatoos.co',
       logLevel: NovaLogLevel.debug,
     ),
   );
