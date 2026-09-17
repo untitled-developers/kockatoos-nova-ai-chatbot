@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show AssetManifest, rootBundle;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/kockatoos_nova_ai_chatbot_config.dart';
@@ -84,6 +86,9 @@ class NovaChatController extends ChangeNotifier {
   bool _soundEnabled = true;
   bool get soundEnabled => _soundEnabled;
 
+  final AudioPlayer _audioPlayer = AudioPlayer();
+  Uint8List? _soundBytes;
+
   bool _drawerOpen = false;
   bool get drawerOpen => _drawerOpen;
 
@@ -148,6 +153,28 @@ class NovaChatController extends ChangeNotifier {
         customSecondary: _config.secondaryColor,
       );
     }
+
+    unawaited(_loadSoundPreference());
+    unawaited(_preloadSound());
+  }
+
+  Future<void> _loadSoundPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'nova_sound_enabled_${_config.apiKey}';
+      if (prefs.containsKey(key)) {
+        _soundEnabled = prefs.getBool(key) ?? true;
+        notifyListeners();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveSoundPreference() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'nova_sound_enabled_${_config.apiKey}';
+      await prefs.setBool(key, _soundEnabled);
+    } catch (_) {}
   }
 
   Future<String?> _loadSavedSessionToken() async {
@@ -407,6 +434,7 @@ class NovaChatController extends ChangeNotifier {
     _messages.add(userMsg);
     _isTyping = true;
     _notifyLoadedState();
+    _playSentSound();
 
     final botMsgId = 'msg-${DateTime.now().millisecondsSinceEpoch + 1}';
     NovaChatMessage? botMsg;
@@ -489,6 +517,7 @@ class NovaChatController extends ChangeNotifier {
           timestamp: _formatTime(DateTime.now()),
         ));
       }
+      _playReceivedSound();
     } catch (e) {
       if (_config.logLevel == NovaLogLevel.debug ||
           _config.logLevel == NovaLogLevel.error) {
@@ -508,6 +537,7 @@ class NovaChatController extends ChangeNotifier {
         timestamp: _formatTime(DateTime.now()),
         pills: fallbackReply.pills,
       ));
+      _playReceivedSound();
     } finally {
       _isTyping = false;
       _isStreaming = false;
@@ -560,6 +590,103 @@ class NovaChatController extends ChangeNotifier {
   void toggleSound() {
     _soundEnabled = !_soundEnabled;
     notifyListeners();
+    _saveSoundPreference();
+  }
+
+  Future<void> _preloadSound() async {
+    if (_soundBytes != null) return;
+    try {
+      String? matchedKey;
+      try {
+        final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+        for (final key in manifest.listAssets()) {
+          if (key.endsWith('notifications.wav') ||
+              key.contains('notifications.wav')) {
+            matchedKey = key;
+            break;
+          }
+        }
+      } catch (e) {
+        if (_config.logLevel == NovaLogLevel.debug) {
+          debugPrint('[Nova SDK] AssetManifest lookup error: $e');
+        }
+      }
+
+      final candidates = <String>[
+        if (matchedKey != null) matchedKey,
+        'packages/kockatoos_nova_ai_chatbot/assets/sounds/notifications.wav',
+        'packages/kockatoos_nova_ai_chatbot/lib/assets/sounds/notifications.wav',
+        'lib/assets/sounds/notifications.wav',
+        'assets/sounds/notifications.wav',
+      ];
+
+      for (final path in candidates) {
+        try {
+          final data = await rootBundle.load(path);
+          _soundBytes = data.buffer.asUint8List();
+          if (_config.logLevel == NovaLogLevel.debug) {
+            debugPrint('[Nova SDK] Preloaded notification sound from $path');
+          }
+          return;
+        } catch (_) {}
+      }
+
+      if (_config.logLevel == NovaLogLevel.debug) {
+        debugPrint(
+          '[Nova SDK] notifications.wav not found in asset bundle.',
+        );
+      }
+    } catch (e) {
+      if (_config.logLevel == NovaLogLevel.debug) {
+        debugPrint('[Nova SDK] Failed to preload notification sound: $e');
+      }
+    }
+  }
+
+  Future<void> _playSound({
+    required double volume,
+    required double playbackRate,
+  }) async {
+    if (!_soundEnabled) return;
+    try {
+      if (_soundBytes == null) {
+        await _preloadSound();
+      }
+
+      if (_soundBytes != null) {
+        await _audioPlayer.stop();
+        try {
+          await _audioPlayer.play(BytesSource(_soundBytes!), volume: volume);
+        } catch (_) {
+          _audioPlayer.audioCache.prefix = '';
+          await _audioPlayer.play(
+            AssetSource('packages/kockatoos_nova_ai_chatbot/assets/sounds/notifications.wav'),
+            volume: volume,
+          );
+        }
+        if (playbackRate != 1.0) {
+          try {
+            await _audioPlayer.setPlaybackRate(playbackRate);
+          } catch (_) {}
+        }
+      }
+    } catch (e) {
+      if (_config.logLevel == NovaLogLevel.debug) {
+        debugPrint('[Nova SDK] Failed to play sound effect: $e');
+      }
+    }
+  }
+
+  /// Sent sound effect (similar to web version's playSent):
+  /// Uses notifications.wav played slightly faster with a lighter, subtle volume.
+  Future<void> _playSentSound() async {
+    await _playSound(volume: 0.5, playbackRate: 1.3);
+  }
+
+  /// Received sound effect (similar to web version's playReceived):
+  /// Uses notifications.wav at full volume and natural chime tempo when bot replies.
+  Future<void> _playReceivedSound() async {
+    await _playSound(volume: 1.0, playbackRate: 1.0);
   }
 
   void toggleDrawer([bool? open]) {
@@ -681,6 +808,7 @@ class NovaChatController extends ChangeNotifier {
   @override
   void dispose() {
     _streamSubscription?.cancel();
+    _audioPlayer.dispose();
     super.dispose();
   }
 }

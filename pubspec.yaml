@@ -19,6 +19,7 @@ dependencies:
   shared_preferences: ^2.5.5
   package_info_plus: ^10.2.1
   flutter_svg: ^2.3.0
+  audioplayers: ^6.8.1
 
 dev_dependencies:
   flutter_test:
@@ -36,6 +37,8 @@ flutter:
   assets:
     - lib/assets/fonts/
     - lib/assets/icons/
+    - lib/assets/sounds/
+    - lib/assets/sounds/notifications.wav
 
   fonts:
     - family: Poppins
