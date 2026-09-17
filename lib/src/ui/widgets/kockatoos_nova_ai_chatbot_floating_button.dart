@@ -96,8 +96,10 @@ class _NovaFloatingButtonState extends State<NovaFloatingButton>
             useSafeArea: false,
             backgroundColor: Colors.transparent,
             builder: (context) {
+              final isKeyboardOpen =
+                  MediaQuery.viewInsetsOf(context).bottom > 0;
               return FractionallySizedBox(
-                heightFactor: 0.88,
+                heightFactor: isKeyboardOpen ? 0.94 : 0.88,
                 child: NovaChatView(
                   controller: activeController,
                   isModal: true,

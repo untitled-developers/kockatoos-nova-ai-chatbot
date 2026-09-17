@@ -11,6 +11,16 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('xyz.luan/audioplayers.global'),
+      (MethodCall methodCall) async => 1,
+    );
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('xyz.luan/audioplayers'),
+      (MethodCall methodCall) async => 1,
+    );
   });
 
   tearDown(() {
@@ -332,6 +342,32 @@ void main() {
       );
 
       expect(find.byType(SvgPicture), findsNWidgets(6));
+    });
+
+    testWidgets('NovaChatView adjusts padding when keyboard viewInsets appear',
+        (WidgetTester tester) async {
+      const config = NovaConfig(apiKey: 'keyboard_key');
+      await Nova.initialize(config: config);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MediaQuery(
+            data: const MediaQueryData(viewInsets: EdgeInsets.only(bottom: 320)),
+            child: const Scaffold(
+              resizeToAvoidBottomInset: false,
+              body: NovaChatView(),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final paddings = tester.widgetList<Padding>(find.byType(Padding));
+      final hasBottomInsetPadding =
+          paddings.any((p) => p.padding.resolve(TextDirection.ltr).bottom == 320);
+      expect(hasBottomInsetPadding, isTrue);
     });
   });
 }

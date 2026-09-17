@@ -36,6 +36,19 @@ class _NovaChatViewState extends State<NovaChatView> {
   bool _showScrollBottom = false;
 
   int _initialMessageCount = -1;
+  double _lastBottomInset = 0;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final currentInset = MediaQuery.viewInsetsOf(context).bottom;
+    if (currentInset > _lastBottomInset) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToBottom(true);
+      });
+    }
+    _lastBottomInset = currentInset;
+  }
 
   @override
   void initState() {
@@ -138,6 +151,7 @@ class _NovaChatViewState extends State<NovaChatView> {
   Widget build(BuildContext context) {
     final theme = _controller.theme;
     final state = _controller.state;
+    final bottomInset = MediaQuery.viewInsetsOf(context).bottom;
 
     // Apply Poppins — the same font used by the landing page and the web widget
     // (.kockatoos-widget { font-family: 'Poppins', … }). A local Theme ensures
@@ -166,22 +180,25 @@ class _NovaChatViewState extends State<NovaChatView> {
           ),
           child: SafeArea(
             top: !widget.isModal,
-            bottom: true,
-            child: Column(
-              children: [
-                _buildHeader(theme),
-                Expanded(
-                  child: NovaChatPatternBackground(
-                    child: Stack(
-                      children: [
-                        _buildBody(state, theme),
-                        _buildScrollToBottomButton(theme),
-                      ],
+            bottom: bottomInset == 0,
+            child: Padding(
+              padding: EdgeInsets.only(bottom: bottomInset),
+              child: Column(
+                children: [
+                  _buildHeader(theme),
+                  Expanded(
+                    child: NovaChatPatternBackground(
+                      child: Stack(
+                        children: [
+                          _buildBody(state, theme),
+                          _buildScrollToBottomButton(theme),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                _buildInputBar(theme),
-              ],
+                  _buildInputBar(theme),
+                ],
+              ),
             ),
           ),
         ),
@@ -422,6 +439,7 @@ class _NovaChatViewState extends State<NovaChatView> {
       return ListView.builder(
         controller: _scrollController,
         reverse: true,
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         itemCount: totalCount,
         itemBuilder: (context, index) {
